@@ -435,7 +435,10 @@
                     // Navigiere zu users, dann setze iframe auf Kunden-Profil
                     loadPage('users');
                     setTimeout(() => {
-                        document.getElementById('mainFrame').src = 'benutzer/BENUTZER-KUNDEN-PROFIL.html';
+                        const iframe = document.querySelector('#content-container iframe');
+                        if (iframe) {
+                            iframe.src = 'benutzer/BENUTZER-KUNDEN-PROFIL.html';
+                        }
                     }, 100);
                     return;
                 }

@@ -2250,17 +2250,72 @@ function updateAddedWgList() {
         const wgInitials = getInitials(wg.name);
         const isActive = activeWgConfig === wg.id;
         return `
-            <div class="anzeigenfeld anzeigenfeld--card ${isActive ? 'active' : ''}" onclick="openWgConfig('${wg.id}')">
-                <div class="user-badge user-badge--werbegebiet user-badge--small">
-                    <div class="user-badge__avatar">${wgInitials}</div>
-                    <div class="user-badge__info">
-                        <span class="user-badge__name">${wg.name}</span>
-                        <span class="user-badge__type">Werbegebiet</span>
+            <div class="anzeigenfeld anzeigenfeld--card ${isActive ? 'active' : ''}">
+                <div class="anzeigenfeld--card-main" onclick="openWgConfig('${wg.id}')">
+                    <div class="user-badge user-badge--werbegebiet user-badge--small">
+                        <div class="user-badge__avatar">${wgInitials}</div>
+                        <div class="user-badge__info">
+                            <span class="user-badge__name">${wg.name}</span>
+                            <span class="user-badge__type">Werbegebiet</span>
+                        </div>
                     </div>
+                </div>
+                <div class="anzeigenfeld--card-actions">
+                    <button class="btn btn-sm btn--hover-gruen" onclick="event.stopPropagation(); openFormularLink('${wg.id}')" title="Formular öffnen">
+                        <span class="icon icon--formular"></span>
+                    </button>
+                    <button class="btn btn-sm btn--hover-blau" onclick="event.stopPropagation(); copyFormularLink('${wg.id}')" title="Link kopieren">
+                        <span class="icon icon--kopieren"></span>
+                    </button>
                 </div>
             </div>
         `;
     }).join('');
+}
+
+// Formular-Link für Werbegebiet generieren
+function getFormularLink(wgId) {
+    const currentUser = window.parent?.currentUser;
+    const botschafterId = currentUser?.id || '';
+    const campaignId = viewingCampaignId || '';
+
+    // Base URL (relativ oder absolut)
+    const baseUrl = '../base/formular/';
+
+    const params = new URLSearchParams({
+        kampagne: campaignId,
+        werbegebiet: wgId,
+        botschafter: botschafterId
+    });
+
+    return `${baseUrl}?${params.toString()}`;
+}
+
+// Formular in neuem Tab öffnen
+function openFormularLink(wgId) {
+    const url = getFormularLink(wgId);
+    window.open(url, '_blank');
+}
+
+// Formular-Link in Zwischenablage kopieren
+async function copyFormularLink(wgId) {
+    const url = getFormularLink(wgId);
+    // Absolute URL erstellen
+    const absoluteUrl = new URL(url, window.location.href).href;
+
+    try {
+        await navigator.clipboard.writeText(absoluteUrl);
+        showToast('Link kopiert!', 'success');
+    } catch (err) {
+        // Fallback für ältere Browser
+        const textArea = document.createElement('textarea');
+        textArea.value = absoluteUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showToast('Link kopiert!', 'success');
+    }
 }
 
 // WG Konfiguration öffnen und direkt bearbeitbar machen

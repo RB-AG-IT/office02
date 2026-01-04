@@ -1027,33 +1027,29 @@ input[type="radio"][name="type"]:checked::after {
 
                     // Kundendaten im Header anzeigen
                     const customer = area.campaigns?.customers;
-                    if (customer) {
-                        const verbandName = document.getElementById('verbandName');
-                        const verbandAdresse = document.getElementById('verbandAdresse');
-                        const footerKundeName = document.getElementById('footerKundeName');
-                        const datenschutzLink = document.getElementById('datenschutzLink');
+                    const verbandName = document.getElementById('verbandName');
+                    const verbandAdresse = document.getElementById('verbandAdresse');
+                    const footerKundeName = document.getElementById('footerKundeName');
 
-                        if (verbandName) {
-                            verbandName.textContent = customer.name || 'DRK Kreisverband';
-                        }
-                        if (verbandAdresse) {
-                            const adresse = [
-                                customer.street,
-                                customer.house_number ? customer.house_number : '',
-                                customer.postal_code ? `, ${customer.postal_code}` : '',
-                                customer.city || ''
-                            ].filter(Boolean).join(' ').replace(' ,', ',');
-                            verbandAdresse.textContent = adresse || '';
-                        }
+                    // Name: Werbegebiet-Name hat Priorität, sonst Kundenname
+                    const displayName = area.name || customer?.name || 'DRK Kreisverband';
 
-                        // Footer: Kundenname
-                        if (footerKundeName) {
-                            footerKundeName.textContent = customer.name || 'DRK Kreisverband';
-                        }
-                        // TODO: Datenschutzlink aktivieren wenn privacy_policy_url in customers existiert
-                        // if (datenschutzLink && customer.privacy_policy_url) {
-                        //     datenschutzLink.href = customer.privacy_policy_url;
-                        // }
+                    if (verbandName) {
+                        verbandName.textContent = displayName;
+                    }
+                    if (footerKundeName) {
+                        footerKundeName.textContent = displayName;
+                    }
+
+                    // Adresse aus Kunde
+                    if (verbandAdresse && customer) {
+                        const adresse = [
+                            customer.street,
+                            customer.house_number ? customer.house_number : '',
+                            customer.postal_code ? `, ${customer.postal_code}` : '',
+                            customer.city || ''
+                        ].filter(Boolean).join(' ').replace(' ,', ',');
+                        verbandAdresse.textContent = adresse || '';
                     }
                 }
 

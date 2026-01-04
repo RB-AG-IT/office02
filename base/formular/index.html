@@ -959,7 +959,11 @@ input[type="radio"][name="type"]:checked::after {
 
         // Botschafter-Daten laden (Foto + Name) - unabhängig von Kampagne
         async function loadBotschafterData() {
-            if (!formContext.botschafter_id) return;
+            console.log('Loading Botschafter, ID:', formContext.botschafter_id);
+            if (!formContext.botschafter_id) {
+                console.warn('Keine Botschafter-ID in URL');
+                return;
+            }
 
             try {
                 const { data: profile } = await supabaseClient
@@ -967,6 +971,8 @@ input[type="radio"][name="type"]:checked::after {
                     .select('first_name, last_name, photo_extern_url')
                     .eq('user_id', formContext.botschafter_id)
                     .single();
+
+                console.log('Botschafter profile loaded:', profile);
 
                 if (profile) {
                     // Name anzeigen
@@ -976,6 +982,7 @@ input[type="radio"][name="type"]:checked::after {
                     }
 
                     // Externes Foto anzeigen
+                    console.log('Photo URL:', profile.photo_extern_url);
                     if (profile.photo_extern_url) {
                         const werberFoto = document.getElementById('werberFoto');
                         const werberPlaceholder = document.getElementById('werberPlaceholder');

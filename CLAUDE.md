@@ -1,23 +1,29 @@
-# Basis-Regeln
+# Allgemeine Regeln
 
-## Kommunikation
-- Kurz, knapp, direkt
-- Bei Unklarheit: Nachfragen statt Annahmen
+- Immer 1x nachfragen vor Beginn/Ausführung (auch wenn Auftrag sicher ist)
+- Immer genau und nur das Gefragte tun
+- Kurz und knappe Kommunikation
 
-## Projekt-Struktur
-- Bestehende Struktur vollständig analysieren
-- Struktur beibehalten (außer explizit anders gefordert)
-- README.MD zu beginn lesen
+## Projekt Aufbau
+- README.md lesen
 
-## Code-Änderungen
-- NUR das Gefragte ausführen
-- NIEMALS ohne Absprache:
-  - Funktionen ändern/löschen
-  - Code hinzufügen
-  - "Verbesserungen" einbauen
-- Bei Auswirkungen auf andere Teile: STOPP und fragen
+## Technik
+- Frontend: Website
+- Backend: Supabase
+- Supabase Key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnenRnbHljcXRpd2NtaXlkeG5tIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzgwNzYxNSwiZXhwIjoyMDc5MzgzNjE1fQ.54kSk9ZSUdQt6LKYWkblqgR6Sjev80W80qkNHYEbPgk
 
-## Vor Ausführung
-- Double-Check: Alles verstanden?
-- Ziel und Aufgabe 100% klar?
-- Wenn nein: Nachfragen
+## Projekt Struktur
+- Kunden (zur Zuordnung)
+- Botschafter (Mitarbeiter mit eigenem Login)
+- Datensätze: Neumitglieder, Erhöhung, Neutrag
+- Datensatz-Status: Aktiv / Storno (passiv)
+
+## Styles
+- Zentrales System für: Schriftklassen, Farben, Buttons, Layout
+- Eigene Funktionen pro Unterseite erstellen
+- Für Layout/wiederkehrende Elemente immer Klassen aus Styles verwenden
+- Bei neuen Objekten: Nachfragen
+
+---
+
+**HINWEIS:** Supabase-Key zum Ende des Projekts entfernen!

@@ -1738,7 +1738,7 @@ function renderCampaigns() {
         const kampagneInitials = getInitials(campaign.name);
 
         return `
-            <div class="campaign-card status-${status}" onclick="viewCampaign(${campaign.id})">
+            <div class="campaign-card status-${status}" onclick="viewCampaign('${campaign.id}')">
                 <div class="anzeigenfeld">
                     <div class="user-badge user-badge--kampagne user-badge--large">
                         <div class="user-badge__avatar">${kampagneInitials}</div>
@@ -2027,57 +2027,11 @@ async function saveCampaignSettings() {
 
 // ===================== WERBEGEBIETE & PROVISIONEN TAB =====================
 
-// Mock-Daten für Werbegebiete pro Kunde
-const kundenWerbegebiete = {
-    drk: [
-        { id: 'wg1', name: 'Ludwigshafen Nord', bevoelkerung: 45000 },
-        { id: 'wg2', name: 'Ludwigshafen Süd', bevoelkerung: 38000 },
-        { id: 'wg3', name: 'Mannheim Zentrum', bevoelkerung: 72000 },
-        { id: 'wg4', name: 'Heidelberg', bevoelkerung: 65000 }
-    ],
-    unicef: [
-        { id: 'wg5', name: 'Berlin Mitte', bevoelkerung: 120000 },
-        { id: 'wg6', name: 'Berlin Charlottenburg', bevoelkerung: 95000 },
-        { id: 'wg7', name: 'Potsdam', bevoelkerung: 55000 }
-    ],
-    wwf: [
-        { id: 'wg8', name: 'München Zentrum', bevoelkerung: 150000 },
-        { id: 'wg9', name: 'Nürnberg', bevoelkerung: 85000 }
-    ],
-    greenpeace: [
-        { id: 'wg10', name: 'Hamburg Nord', bevoelkerung: 110000 },
-        { id: 'wg11', name: 'Hamburg Süd', bevoelkerung: 90000 },
-        { id: 'wg12', name: 'Kiel', bevoelkerung: 48000 }
-    ],
-    aerzte: [
-        { id: 'wg13', name: 'Frankfurt Zentrum', bevoelkerung: 130000 },
-        { id: 'wg14', name: 'Wiesbaden', bevoelkerung: 62000 }
-    ]
-};
+// Werbegebiete pro Kunde - werden aus Supabase geladen (customer_areas)
+const kundenWerbegebiete = {};
 
-// Mock-Daten für Verträge pro Kunde
-const kundenVertraege = {
-    drk: {
-        rahmenvertraege: ['RV-2024-001 Jahresvertrag', 'RV-2024-002 Quartalsvertrag'],
-        avv: ['AVV-DRK-2024']
-    },
-    unicef: {
-        rahmenvertraege: ['RV-UNICEF-2024'],
-        avv: ['AVV-UNICEF-2024', 'AVV-UNICEF-2023-ALT']
-    },
-    wwf: {
-        rahmenvertraege: ['RV-WWF-Q1-2024', 'RV-WWF-Q2-2024'],
-        avv: ['AVV-WWF-2024']
-    },
-    greenpeace: {
-        rahmenvertraege: ['RV-GP-2024'],
-        avv: ['AVV-GP-2024']
-    },
-    aerzte: {
-        rahmenvertraege: ['RV-AOG-2024'],
-        avv: ['AVV-AOG-2024']
-    }
-};
+// Verträge pro Kunde - werden aus Supabase geladen (customer_contracts)
+const kundenVertraege = {};
 
 // State für WG Tab
 let selectedWgKunde = null;
@@ -2951,13 +2905,8 @@ function renderTeamOverview(campaign) {
 function renderTCDienste(campaign) {
     const container = document.getElementById('viewTCDienste');
 
-    // Dummy-Daten für TC-Dienste (später aus DB)
-    const tcDienste = campaign.tcDienste || [
-        { dienst: 'muell', faktor: 0.2 },
-        { dienst: 'motivation', faktor: 0.3 },
-        { dienst: 'gebiet', faktor: 0.3 },
-        { dienst: 'einkauf', faktor: 0.2 }
-    ];
+    // TC-Dienste aus Supabase
+    const tcDienste = campaign.tcDienste || [];
 
     const gesamtFaktor = tcDienste.reduce((sum, d) => sum + d.faktor, 0);
     const isOver = gesamtFaktor > 1;
@@ -3069,8 +3018,8 @@ function renderKWDetails(campaign) {
     const currentKW = getCurrentKW();
     let html = '';
 
-    // Kampagnen-Werbegebiete (aus Einsatzgebieten oder Kunden-Default)
-    const campaignWerbegebiete = campaign.einsatzgebiete || customerAreas[campaign.customer] || customerAreas.drk;
+    // Kampagnen-Werbegebiete (aus Einsatzgebieten oder campaign_areas aus Supabase)
+    const campaignWerbegebiete = campaign.einsatzgebiete || [];
 
     for (let kw = campaign.kwFrom; kw <= campaign.kwTo; kw++) {
         const assignment = campaign.assignments[kw] || {};
@@ -3131,7 +3080,7 @@ function renderKWDetails(campaign) {
         // Sortiere Werber alphabetisch für Header-Pills
         const werberSorted = [...werberWithLabels].sort((a, b) => a.name.localeCompare(b.name));
 
-        // Dummy TC-Dienste pro KW
+        // TC-Dienste pro KW (aus Supabase)
         const kwDienste = assignment.tcDienste || [];
         const vergebenerFaktor = kwDienste.reduce((sum, d) => sum + (d.faktor || 0), 0);
         const tcFaktorVerbleibend = Math.max(0, 1 - vergebenerFaktor);
@@ -3886,7 +3835,7 @@ async function handleWgClick(kw, wgId, isCurrentlySelected) {
     }
 
     // Default: alle WGs der Kampagne sind aktiv
-    const campaignWerbegebiete = campaign.einsatzgebiete || customerAreas[campaign.customer] || customerAreas.drk;
+    const campaignWerbegebiete = campaign.einsatzgebiete || [];
     const currentWGs = campaign.assignments[kw].werbegebiete || campaignWerbegebiete.map(wg => wg.id);
 
     if (isCurrentlySelected) {
@@ -3936,7 +3885,7 @@ function toggleKWWerbegebiet(kw, wgId) {
     }
 
     // Default: alle WGs der Kampagne sind aktiv (gleiche Datenquelle wie beim Rendern!)
-    const campaignWerbegebiete = campaign.einsatzgebiete || customerAreas[campaign.customer] || customerAreas.drk;
+    const campaignWerbegebiete = campaign.einsatzgebiete || [];
     const currentWGs = campaign.assignments[kw].werbegebiete || campaignWerbegebiete.map(wg => wg.id);
 
     if (currentWGs.includes(wgId)) {
@@ -4154,25 +4103,13 @@ function renderLastSchriebe(campaign) {
     const row1Container = document.getElementById('viewLastSchriebeRow1');
     const row2Container = document.getElementById('viewLastSchriebeRow2');
 
-    // Dummy data - wird später aus Datenbank kommen
-    // emailStatus: 'sent' (versendet), 'opened' (geöffnet), 'not_sent' (nicht gesendet)
-    // typ: 'NMG' (Neumitglied) oder 'ERH' (Erhöhung)
-    const dummySchriebe = [
-        { id: 1, memberName: 'Klaus Reichert', eh: 40, typ: 'ERH', werbegebiet: 'Ludwigshafen-Mitte', strasse: 'Hauptstraße', hausnr: '12', uhrzeit: '14:32', botschafter: 'A. Schneider', emailStatus: 'opened', ibanFilled: true },
-        { id: 2, memberName: 'Dr. Werner Braun', eh: 50, typ: 'NMG', werbegebiet: 'Heidelberg-Altstadt', strasse: 'Bergstraße', hausnr: '45a', uhrzeit: '13:15', botschafter: 'L. Bauer', emailStatus: 'sent', ibanFilled: false },
-        { id: 3, memberName: 'Maria Gruber', eh: 30, typ: 'NMG', werbegebiet: 'Mannheim-Neckarau', strasse: 'Rheinauer Str.', hausnr: '78', uhrzeit: '11:48', botschafter: 'M. Klein', emailStatus: 'not_sent', ibanFilled: false },
-        { id: 4, memberName: 'Hans Müller', eh: 20, typ: 'ERH', werbegebiet: 'Ludwigshafen-Süd', strasse: 'Bahnhofstr.', hausnr: '3', uhrzeit: '10:22', botschafter: 'A. Schneider', emailStatus: 'opened', ibanFilled: true },
-        { id: 5, memberName: 'Petra Schmidt', eh: 15, typ: 'NMG', werbegebiet: 'Heidelberg-Neuenheim', strasse: 'Uferweg', hausnr: '91', uhrzeit: '16:05', botschafter: 'P. Hoffmann', emailStatus: 'sent', ibanFilled: false },
-        { id: 6, memberName: 'Michael Weber', eh: 10, typ: 'NMG', werbegebiet: 'Mannheim-Käfertal', strasse: 'Waldpfad', hausnr: '17', uhrzeit: '09:33', botschafter: 'M. Klein', emailStatus: 'sent', ibanFilled: true },
-        { id: 7, memberName: 'Sabine Fischer', eh: 25, typ: 'ERH', werbegebiet: 'Ludwigshafen-Mitte', strasse: 'Marktplatz', hausnr: '5', uhrzeit: '15:47', botschafter: 'L. Bauer', emailStatus: 'opened', ibanFilled: true },
-        { id: 8, memberName: 'Thomas Koch', eh: 35, typ: 'NMG', werbegebiet: 'Heidelberg-Altstadt', strasse: 'Schlossberg', hausnr: '22', uhrzeit: '12:19', botschafter: 'A. Schneider', emailStatus: 'sent', ibanFilled: false },
-        { id: 9, memberName: 'Andrea Wagner', eh: 13, typ: 'NMG', werbegebiet: 'Mannheim-Neckarau', strasse: 'Industriestr.', hausnr: '8b', uhrzeit: '17:55', botschafter: 'P. Hoffmann', emailStatus: 'not_sent', ibanFilled: false },
-        { id: 10, memberName: 'Frank Becker', eh: 7, typ: 'ERH', werbegebiet: 'Ludwigshafen-Süd', strasse: 'Gartenweg', hausnr: '34', uhrzeit: '08:41', botschafter: 'M. Klein', emailStatus: 'opened', ibanFilled: true }
-    ];
+    // Schriebe werden aus records-Tabelle geladen (TODO: Implementierung)
+    // Vorerst leer
+    const schriebe = [];
 
     // Aufteilen in zwei Reihen
-    const row1Data = dummySchriebe.slice(0, 5);
-    const row2Data = dummySchriebe.slice(5, 10);
+    const row1Data = schriebe.slice(0, 5);
+    const row2Data = schriebe.slice(5, 10);
 
     // HTML für eine Reihe generieren
     function generateRowHtml(schriebe) {
@@ -4272,30 +4209,12 @@ function renderLastSchriebe(campaign) {
 // Aktuelles Mitglied im Modal
 let currentMitglied = null;
 
-// Dummy Mitglieder-Daten (später aus DB)
+// Mitglieder-Daten - werden aus Supabase geladen (records)
 // typ: 'NMG' (Neumitglied) oder 'ERH' (Erhöhung)
-const mitgliederData = {
-    1: { id: 1, name: 'Klaus Reichert', eh: 40, typ: 'ERH', werbegebiet: 'Ludwigshafen-Mitte', werbegebietId: 'lu-mitte', strasse: 'Hauptstraße', hausnr: '12', plz: '67059', ort: 'Ludwigshafen', email: 'k.reichert@email.de', uhrzeit: '14:32', botschafter: 'A. Schneider', emailStatus: 'opened', ibanFilled: true },
-    2: { id: 2, name: 'Dr. Werner Braun', eh: 50, typ: 'NMG', werbegebiet: 'Heidelberg-Altstadt', werbegebietId: 'hd-altstadt', strasse: 'Bergstraße', hausnr: '45a', plz: '69117', ort: 'Heidelberg', email: 'w.braun@praxis.de', uhrzeit: '13:15', botschafter: 'L. Bauer', emailStatus: 'sent', ibanFilled: false },
-    3: { id: 3, name: 'Maria Gruber', eh: 30, typ: 'NMG', werbegebiet: 'Mannheim-Neckarau', werbegebietId: 'ma-neckarau', strasse: 'Rheinauer Str.', hausnr: '78', plz: '68199', ort: 'Mannheim', email: 'm.gruber@web.de', uhrzeit: '11:48', botschafter: 'M. Klein', emailStatus: 'not_sent', ibanFilled: false },
-    4: { id: 4, name: 'Hans Müller', eh: 20, typ: 'ERH', werbegebiet: 'Ludwigshafen-Süd', werbegebietId: 'lu-sued', strasse: 'Bahnhofstr.', hausnr: '3', plz: '67063', ort: 'Ludwigshafen', email: 'hans.mueller@gmx.de', uhrzeit: '10:22', botschafter: 'A. Schneider', emailStatus: 'opened', ibanFilled: true },
-    5: { id: 5, name: 'Petra Schmidt', eh: 15, typ: 'NMG', werbegebiet: 'Heidelberg-Neuenheim', werbegebietId: 'hd-neuenheim', strasse: 'Uferweg', hausnr: '91', plz: '69120', ort: 'Heidelberg', email: 'petra.schmidt@outlook.de', uhrzeit: '16:05', botschafter: 'P. Hoffmann', emailStatus: 'sent', ibanFilled: false },
-    6: { id: 6, name: 'Michael Weber', eh: 10, typ: 'NMG', werbegebiet: 'Mannheim-Käfertal', werbegebietId: 'ma-kaefertal', strasse: 'Waldpfad', hausnr: '17', plz: '68309', ort: 'Mannheim', email: 'm.weber@firma.de', uhrzeit: '09:33', botschafter: 'M. Klein', emailStatus: 'sent', ibanFilled: true },
-    7: { id: 7, name: 'Sabine Fischer', eh: 25, typ: 'ERH', werbegebiet: 'Ludwigshafen-Mitte', werbegebietId: 'lu-mitte', strasse: 'Marktplatz', hausnr: '5', plz: '67059', ort: 'Ludwigshafen', email: 's.fischer@yahoo.de', uhrzeit: '15:47', botschafter: 'L. Bauer', emailStatus: 'opened', ibanFilled: true },
-    8: { id: 8, name: 'Thomas Koch', eh: 35, typ: 'NMG', werbegebiet: 'Heidelberg-Altstadt', werbegebietId: 'hd-altstadt', strasse: 'Schlossberg', hausnr: '22', plz: '69117', ort: 'Heidelberg', email: 't.koch@email.de', uhrzeit: '12:19', botschafter: 'A. Schneider', emailStatus: 'sent', ibanFilled: false },
-    9: { id: 9, name: 'Andrea Wagner', eh: 13, typ: 'NMG', werbegebiet: 'Mannheim-Neckarau', werbegebietId: 'ma-neckarau', strasse: 'Industriestr.', hausnr: '8b', plz: '68199', ort: 'Mannheim', email: 'a.wagner@provider.de', uhrzeit: '17:55', botschafter: 'P. Hoffmann', emailStatus: 'not_sent', ibanFilled: false },
-    10: { id: 10, name: 'Frank Becker', eh: 7, typ: 'ERH', werbegebiet: 'Ludwigshafen-Süd', werbegebietId: 'lu-sued', strasse: 'Gartenweg', hausnr: '34', plz: '67063', ort: 'Ludwigshafen', email: 'f.becker@mail.de', uhrzeit: '08:41', botschafter: 'M. Klein', emailStatus: 'opened', ibanFilled: true }
-};
+const mitgliederData = {};
 
-// Verfügbare Werbegebiete (später aus Kampagne)
-const verfuegbareWerbegebiete = [
-    { id: 'lu-mitte', name: 'Ludwigshafen-Mitte' },
-    { id: 'lu-sued', name: 'Ludwigshafen-Süd' },
-    { id: 'hd-altstadt', name: 'Heidelberg-Altstadt' },
-    { id: 'hd-neuenheim', name: 'Heidelberg-Neuenheim' },
-    { id: 'ma-neckarau', name: 'Mannheim-Neckarau' },
-    { id: 'ma-kaefertal', name: 'Mannheim-Käfertal' }
-];
+// Verfügbare Werbegebiete - werden aus campaign_areas geladen
+const verfuegbareWerbegebiete = [];
 
 // Mitglied Card für Modal - exakt gleiche Karte wie im Grid (nicht klickbar)
 function renderMitgliedCardLarge(mitglied) {
@@ -4526,33 +4445,18 @@ function renderAuditLog() {
     if (!container) return;
 
     // Alle Mitglieder aus mitgliederData als Array (sortiert nach ID absteigend = neueste zuerst)
+    // Daten kommen aus Supabase (records Tabelle)
     const allMitglieder = Object.values(mitgliederData).sort((a, b) => b.id - a.id);
 
-    // Erweiterte Dummy-Daten für 25 Mitglieder
-    const extendedMitglieder = [
-        ...allMitglieder,
-        { id: 11, name: 'Sandra Hoffmann', eh: 22, werbegebiet: 'Ludwigshafen-Mitte', strasse: 'Königstr.', hausnr: '15', uhrzeit: '07:15', emailStatus: 'opened', ibanFilled: true },
-        { id: 12, name: 'Peter Krause', eh: 18, werbegebiet: 'Heidelberg-Altstadt', strasse: 'Neuenheimer Landstr.', hausnr: '88', uhrzeit: '19:30', emailStatus: 'sent', ibanFilled: false },
-        { id: 13, name: 'Monika Schulz', eh: 33, werbegebiet: 'Mannheim-Neckarau', strasse: 'Rheingoldstr.', hausnr: '42', uhrzeit: '16:45', emailStatus: 'opened', ibanFilled: true },
-        { id: 14, name: 'Jürgen Wolf', eh: 28, werbegebiet: 'Ludwigshafen-Süd', strasse: 'Südring', hausnr: '7', uhrzeit: '11:20', emailStatus: 'not_sent', ibanFilled: false },
-        { id: 15, name: 'Claudia Meyer', eh: 45, werbegebiet: 'Heidelberg-Neuenheim', strasse: 'Handschuhsheimer Landstr.', hausnr: '56', uhrzeit: '14:00', emailStatus: 'opened', ibanFilled: true },
-        { id: 16, name: 'Ralf Zimmermann', eh: 12, werbegebiet: 'Mannheim-Käfertal', strasse: 'Waldstr.', hausnr: '33', uhrzeit: '08:55', emailStatus: 'sent', ibanFilled: true },
-        { id: 17, name: 'Ingrid Braun', eh: 38, werbegebiet: 'Ludwigshafen-Mitte', strasse: 'Bismarckstr.', hausnr: '21', uhrzeit: '10:10', emailStatus: 'opened', ibanFilled: false },
-        { id: 18, name: 'Wolfgang Huber', eh: 27, werbegebiet: 'Heidelberg-Altstadt', strasse: 'Karlsruher Str.', hausnr: '9', uhrzeit: '15:25', emailStatus: 'sent', ibanFilled: true },
-        { id: 19, name: 'Stefanie Lang', eh: 19, werbegebiet: 'Mannheim-Neckarau', strasse: 'Neckarauer Str.', hausnr: '112', uhrzeit: '12:40', emailStatus: 'not_sent', ibanFilled: false },
-        { id: 20, name: 'Dieter Schwarz', eh: 31, werbegebiet: 'Ludwigshafen-Süd', strasse: 'Mundenheimer Str.', hausnr: '67', uhrzeit: '17:05', emailStatus: 'opened', ibanFilled: true },
-        { id: 21, name: 'Heike Neumann', eh: 24, werbegebiet: 'Heidelberg-Neuenheim', strasse: 'Berliner Str.', hausnr: '3', uhrzeit: '09:15', emailStatus: 'sent', ibanFilled: false },
-        { id: 22, name: 'Uwe Becker', eh: 42, werbegebiet: 'Mannheim-Käfertal', strasse: 'Lampertheimer Str.', hausnr: '28', uhrzeit: '13:50', emailStatus: 'opened', ibanFilled: true },
-        { id: 23, name: 'Martina Klein', eh: 16, werbegebiet: 'Ludwigshafen-Mitte', strasse: 'Oggersheimer Str.', hausnr: '45', uhrzeit: '18:20', emailStatus: 'sent', ibanFilled: true },
-        { id: 24, name: 'Helmut Richter', eh: 55, werbegebiet: 'Heidelberg-Altstadt', strasse: 'Philosophenweg', hausnr: '1', uhrzeit: '07:45', emailStatus: 'opened', ibanFilled: false },
-        { id: 25, name: 'Renate Vogel', eh: 29, werbegebiet: 'Mannheim-Neckarau', strasse: 'Casterfeldstr.', hausnr: '89', uhrzeit: '14:55', emailStatus: 'not_sent', ibanFilled: false }
-    ];
-
     // Nur die ersten 25 nehmen
-    const mitglieder = extendedMitglieder.slice(0, 25);
+    const mitglieder = allMitglieder.slice(0, 25);
 
     // Zentrale renderMemberCards() Funktion verwenden
-    container.innerHTML = renderMemberCards(mitglieder);
+    if (mitglieder.length === 0) {
+        container.innerHTML = '<p class="text-muted">Noch keine Mitglieder erfasst.</p>';
+    } else {
+        container.innerHTML = renderMemberCards(mitglieder);
+    }
 }
 
 // Render Einsatzgebiete in view (with nice Konditionen display und DRK-Optionen)
@@ -4560,37 +4464,12 @@ function renderViewEinsatzgebiete(campaign) {
     const container = document.getElementById('viewEinsatzgebiete');
     if (!container) return; // Element wurde entfernt - skip
 
-    // Dummy data for now - will come from Supabase later
-    const dummyEinsatzgebiete = [
-        {
-            name: campaign.area || 'Ludwigshafen-Mitte e.V.',
-            plz: '67059',
-            population: 150000,
-            sondierungslimit: 100,
-            sondierung: [80, 50, 20, 10, 5],
-            regular: [65, 40, 15, 8, 4],
-            qualityBonus: true,
-            stornoRules: [
-                { threshold: 15, bonus: 3 },
-                { threshold: 12, bonus: 3 },
-                { threshold: 10, bonus: 3 },
-                { threshold: 8, bonus: 1 }
-            ],
-            teilvergutung: true,
-            teilvergutungPercent: 80,
-            // Neue Optionen
-            erhohungen: true,
-            paymentModalities: ['monthly', 'quarterly', 'biannual', 'annual'],
-            // DRK-Optionen
-            drkAuto: { bereitstellung: 'drk', kostenuebernahme: 'drk', kostenTyp: 'aufwand', kosten: 250 },
-            drkKleidung: { bereitstellung: 'rb', kostenuebernahme: 'drk', kostenTyp: 'vereinbart', kosten: 50, pro: 'person', zeitraum: 'woche' },
-            drkAusweise: { bereitstellung: 'drk', kostenuebernahme: 'drk', kostenTyp: 'aufwand', kosten: 0 }
-        }
-    ];
+    // Einsatzgebiete aus campaign_areas (Supabase)
+    const einsatzgebiete = campaign.einsatzgebiete || [];
 
     let html = '';
 
-    dummyEinsatzgebiete.forEach((eg, index) => {
+    einsatzgebiete.forEach((eg, index) => {
         // Payment modalities labels
         const paymentLabels = {
             'monthly': 'Monatlich',
@@ -5012,42 +4891,11 @@ initModalBackdropClose('campaignSettingsModal', closeCampaignSettingsModal);
 // EINSATZGEBIETE & KONDITIONEN
 // ============================================
 
-// Dummy Werbegebiete pro Kunde
-const customerAreas = {
-    drk: [
-        { id: 'lu-mitte', name: 'Ludwigshafen-Mitte e.V.', plz: '67059', einwohner: 45000 },
-        { id: 'lu-sued', name: 'Ludwigshafen-Süd e.V.', plz: '67061', einwohner: 32000 },
-        { id: 'ma-zentrum', name: 'Mannheim-Zentrum e.V.', plz: '68161', einwohner: 58000 },
-        { id: 'lu-nord', name: 'Ludwigshafen-Nord e.V.', plz: '67065', einwohner: 38000 },
-        { id: 'ma-nord', name: 'Mannheim-Nord e.V.', plz: '68169', einwohner: 42000 },
-        { id: 'ma-sued', name: 'Mannheim-Süd e.V.', plz: '68199', einwohner: 51000 },
-        { id: 'hd-altstadt', name: 'Heidelberg-Altstadt e.V.', plz: '69117', einwohner: 28000 }
-    ],
-    unicef: [
-        { id: 'muc-zentrum', name: 'München-Zentrum', plz: '80331', einwohner: 125000 },
-        { id: 'muc-nord', name: 'München-Nord', plz: '80933', einwohner: 78000 }
-    ],
-    wwf: [
-        { id: 'hh-city', name: 'Hamburg-City', plz: '20095', einwohner: 95000 }
-    ],
-    greenpeace: [
-        { id: 'koeln-mitte', name: 'Köln-Mitte', plz: '50667', einwohner: 112000 }
-    ],
-    aerzte: [
-        { id: 'ffm-zentrum', name: 'Frankfurt-Zentrum', plz: '60311', einwohner: 87000 }
-    ]
-};
+// Werbegebiete pro Kunde (wird aus Supabase geladen wenn Kunde verknüpft)
+const customerAreas = {};
 
-// Dummy Verträge pro Kunde
-const customerContracts = {
-    drk: [
-        { id: 'rv-2024-001', name: 'Rahmenvertrag 2024' },
-        { id: 'rv-2023-001', name: 'Rahmenvertrag 2023' }
-    ],
-    unicef: [
-        { id: 'rv-unicef-2024', name: 'Rahmenvertrag UNICEF 2024' }
-    ]
-};
+// Verträge pro Kunde (wird aus Supabase geladen wenn Kunde verknüpft)
+const customerContracts = {};
 
 // Initial render - Daten aus Supabase laden
 (async function init() {

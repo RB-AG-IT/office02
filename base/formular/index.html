@@ -580,12 +580,15 @@ input[type="radio"][name="type"]:checked::after {
     <img src="logo.png" width="200" height="auto" alt="Logo" style="display: block; max-height: 100px; object-fit: contain;">
 </div>
                 <div class="werber-info">
-                    <div class="werber-bild" style="background: white;">Foto</div>
-                    <div class="werber-name">Max</div>
+                    <div class="werber-bild" id="werberBild" style="background: white; overflow: hidden;">
+                        <img id="werberFoto" src="" alt="Werber" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                        <span id="werberPlaceholder">Foto</span>
+                    </div>
+                    <div class="werber-name" id="werberName">-</div>
                 </div>
             </div>
-            <div class="verband-name">DRK Kreisverband Musterstadt</div>
-            <div class="verband-adresse">Musterstraße 123, 12345 Musterstadt</div>
+            <div class="verband-name" id="verbandName">DRK Kreisverband Musterstadt</div>
+            <div class="verband-adresse" id="verbandAdresse">Musterstraße 123, 12345 Musterstadt</div>
         </div>
         
         <!-- Gruppenbild -->
@@ -910,9 +913,9 @@ input[type="radio"][name="type"]:checked::after {
 
             <!-- Footer -->
             <div class="footer-text">
-                Mit dem Absenden wird bestätigt, dass die DSGVO-konforme 
-                <a href="#" style="color: #667eea;">Datenschutzerklärung</a> 
-                des DRK Kreisverband Musterstadt zur Kenntnis genommen und akzeptiert wurde.
+                Mit dem Absenden wird bestätigt, dass die DSGVO-konforme
+                <a href="#" id="datenschutzLink" target="_blank" style="color: #667eea;">Datenschutzerklärung</a>
+                des <span id="footerKundeName">DRK Kreisverband</span> zur Kenntnis genommen und akzeptiert wurde.
             </div>
         </form>
     </div>
@@ -954,8 +957,45 @@ input[type="radio"][name="type"]:checked::after {
         formContext.kw = parseInt(urlParams.get('kw')) || getCurrentKW();
         formContext.year = parseInt(urlParams.get('year')) || new Date().getFullYear();
 
+        // Botschafter-Daten laden (Foto + Name) - unabhängig von Kampagne
+        async function loadBotschafterData() {
+            if (!formContext.botschafter_id) return;
+
+            try {
+                const { data: profile } = await supabaseClient
+                    .from('user_profiles')
+                    .select('first_name, last_name, photo_extern_url')
+                    .eq('user_id', formContext.botschafter_id)
+                    .single();
+
+                if (profile) {
+                    // Name anzeigen
+                    const werberName = document.getElementById('werberName');
+                    if (werberName) {
+                        werberName.textContent = profile.first_name || '-';
+                    }
+
+                    // Externes Foto anzeigen
+                    if (profile.photo_extern_url) {
+                        const werberFoto = document.getElementById('werberFoto');
+                        const werberPlaceholder = document.getElementById('werberPlaceholder');
+                        if (werberFoto && werberPlaceholder) {
+                            werberFoto.src = profile.photo_extern_url;
+                            werberFoto.style.display = 'block';
+                            werberPlaceholder.style.display = 'none';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Fehler beim Laden des Botschafters:', error);
+            }
+        }
+
         // Kontext laden (Teamchef, Quality, Customer aus Kampagne/Area)
         async function loadFormContext() {
+            // Botschafter immer laden (auch ohne Kampagne)
+            await loadBotschafterData();
+
             if (!formContext.campaign_id || !formContext.campaign_area_id) {
                 console.warn('Keine Kampagne oder Werbegebiet in URL');
                 return;
@@ -975,15 +1015,45 @@ input[type="radio"][name="type"]:checked::after {
                     formContext.quality_id = assignment.quality_manager_id;
                 }
 
-                // Campaign Area laden (für Customer)
+                // Campaign Area + Kunde laden
                 const { data: area } = await supabaseClient
                     .from('campaign_areas')
-                    .select('*, campaigns(customer_id)')
+                    .select('*, campaigns(customer_id, customers(name, street, house_number, postal_code, city, privacy_policy_url))')
                     .eq('id', formContext.campaign_area_id)
                     .single();
 
                 if (area) {
                     formContext.customer_id = area.campaigns?.customer_id;
+
+                    // Kundendaten im Header anzeigen
+                    const customer = area.campaigns?.customers;
+                    if (customer) {
+                        const verbandName = document.getElementById('verbandName');
+                        const verbandAdresse = document.getElementById('verbandAdresse');
+                        const footerKundeName = document.getElementById('footerKundeName');
+                        const datenschutzLink = document.getElementById('datenschutzLink');
+
+                        if (verbandName) {
+                            verbandName.textContent = customer.name || 'DRK Kreisverband';
+                        }
+                        if (verbandAdresse) {
+                            const adresse = [
+                                customer.street,
+                                customer.house_number ? customer.house_number : '',
+                                customer.postal_code ? `, ${customer.postal_code}` : '',
+                                customer.city || ''
+                            ].filter(Boolean).join(' ').replace(' ,', ',');
+                            verbandAdresse.textContent = adresse || '';
+                        }
+
+                        // Footer: Kundenname und Datenschutzlink
+                        if (footerKundeName) {
+                            footerKundeName.textContent = customer.name || 'DRK Kreisverband';
+                        }
+                        if (datenschutzLink && customer.privacy_policy_url) {
+                            datenschutzLink.href = customer.privacy_policy_url;
+                        }
+                    }
                 }
 
                 console.log('Form context loaded:', formContext);

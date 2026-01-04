@@ -1018,7 +1018,7 @@ input[type="radio"][name="type"]:checked::after {
                 // Campaign Area + Kunde laden
                 const { data: area } = await supabaseClient
                     .from('campaign_areas')
-                    .select('*, campaigns(customer_id, customers(name, street, house_number, postal_code, city, privacy_policy_url))')
+                    .select('*, campaigns(customer_id, customers(name, street, house_number, postal_code, city))')
                     .eq('id', formContext.campaign_area_id)
                     .single();
 
@@ -1046,13 +1046,14 @@ input[type="radio"][name="type"]:checked::after {
                             verbandAdresse.textContent = adresse || '';
                         }
 
-                        // Footer: Kundenname und Datenschutzlink
+                        // Footer: Kundenname
                         if (footerKundeName) {
                             footerKundeName.textContent = customer.name || 'DRK Kreisverband';
                         }
-                        if (datenschutzLink && customer.privacy_policy_url) {
-                            datenschutzLink.href = customer.privacy_policy_url;
-                        }
+                        // TODO: Datenschutzlink aktivieren wenn privacy_policy_url in customers existiert
+                        // if (datenschutzLink && customer.privacy_policy_url) {
+                        //     datenschutzLink.href = customer.privacy_policy_url;
+                        // }
                     }
                 }
 

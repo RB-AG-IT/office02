@@ -1022,43 +1022,60 @@ input[type="radio"][name="type"]:checked::after {
                     formContext.quality_id = assignment.quality_manager_id;
                 }
 
-                // Campaign Area + Kunde laden
-                const { data: area } = await supabaseClient
+                // Campaign Area laden (mit Referenz auf customer_areas)
+                const { data: area, error: areaError } = await supabaseClient
                     .from('campaign_areas')
-                    .select('*, campaigns(customer_id, customers(name, street, house_number, postal_code, city))')
+                    .select('*, customer_area_id')
                     .eq('id', formContext.campaign_area_id)
                     .single();
 
-                if (area) {
-                    console.log('Campaign Area loaded:', area);
-                    console.log('Area name:', area.name);
-                    formContext.customer_id = area.campaigns?.customer_id;
+                console.log('Campaign Area loaded:', area, areaError);
 
-                    // Kundendaten im Header anzeigen
-                    const customer = area.campaigns?.customers;
+                if (area) {
                     const verbandName = document.getElementById('verbandName');
                     const verbandAdresse = document.getElementById('verbandAdresse');
                     const footerKundeName = document.getElementById('footerKundeName');
+                    const datenschutzLink = document.getElementById('datenschutzLink');
 
-                    // Name: Werbegebiet-Name hat Priorität, sonst Kundenname
-                    const displayName = area.name || customer?.name || 'DRK Kreisverband';
+                    // Customer Area laden (Stammdaten: Name, Adresse, Datenschutz)
+                    if (area.customer_area_id) {
+                        const { data: customerArea } = await supabaseClient
+                            .from('customer_areas')
+                            .select('name, street, house_number, postal_code, city, privacy_policy')
+                            .eq('id', area.customer_area_id)
+                            .single();
 
-                    if (verbandName) {
-                        verbandName.textContent = displayName;
-                    }
-                    if (footerKundeName) {
-                        footerKundeName.textContent = displayName;
-                    }
+                        console.log('Customer Area loaded:', customerArea);
 
-                    // Adresse aus Kunde
-                    if (verbandAdresse && customer) {
-                        const adresse = [
-                            customer.street,
-                            customer.house_number ? customer.house_number : '',
-                            customer.postal_code ? `, ${customer.postal_code}` : '',
-                            customer.city || ''
-                        ].filter(Boolean).join(' ').replace(' ,', ',');
-                        verbandAdresse.textContent = adresse || '';
+                        if (customerArea) {
+                            // Name anzeigen
+                            if (customerArea.name) {
+                                if (verbandName) verbandName.textContent = customerArea.name;
+                                if (footerKundeName) footerKundeName.textContent = customerArea.name;
+                            }
+
+                            // Adresse anzeigen
+                            if (verbandAdresse) {
+                                const adresse = [
+                                    customerArea.street,
+                                    customerArea.house_number || '',
+                                    customerArea.postal_code ? `, ${customerArea.postal_code}` : '',
+                                    customerArea.city || ''
+                                ].filter(Boolean).join(' ').replace(' ,', ',');
+                                verbandAdresse.textContent = adresse || '';
+                            }
+
+                            // Datenschutzlink setzen
+                            if (datenschutzLink && customerArea.privacy_policy) {
+                                datenschutzLink.href = customerArea.privacy_policy;
+                            }
+                        }
+                    } else {
+                        // Fallback: Name aus campaign_areas verwenden
+                        if (area.name) {
+                            if (verbandName) verbandName.textContent = area.name;
+                            if (footerKundeName) footerKundeName.textContent = area.name;
+                        }
                     }
                 }
 

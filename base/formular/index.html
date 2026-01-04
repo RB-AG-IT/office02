@@ -913,9 +913,9 @@ input[type="radio"][name="type"]:checked::after {
 
             <!-- Footer -->
             <div class="footer-text">
-                Mit dem Absenden wird bestätigt, dass die DSGVO-konforme 
-                <a href="#" style="color: #667eea;">Datenschutzerklärung</a> 
-                des DRK Kreisverband Musterstadt zur Kenntnis genommen und akzeptiert wurde.
+                Mit dem Absenden wird bestätigt, dass die DSGVO-konforme
+                <a href="#" id="datenschutzLink" target="_blank" style="color: #667eea;">Datenschutzerklärung</a>
+                des <span id="footerKundeName">DRK Kreisverband</span> zur Kenntnis genommen und akzeptiert wurde.
             </div>
         </form>
     </div>
@@ -1018,7 +1018,7 @@ input[type="radio"][name="type"]:checked::after {
                 // Campaign Area + Kunde laden
                 const { data: area } = await supabaseClient
                     .from('campaign_areas')
-                    .select('*, campaigns(customer_id, customers(name, street, house_number, postal_code, city))')
+                    .select('*, campaigns(customer_id, customers(name, street, house_number, postal_code, city, privacy_policy_url))')
                     .eq('id', formContext.campaign_area_id)
                     .single();
 
@@ -1030,6 +1030,8 @@ input[type="radio"][name="type"]:checked::after {
                     if (customer) {
                         const verbandName = document.getElementById('verbandName');
                         const verbandAdresse = document.getElementById('verbandAdresse');
+                        const footerKundeName = document.getElementById('footerKundeName');
+                        const datenschutzLink = document.getElementById('datenschutzLink');
 
                         if (verbandName) {
                             verbandName.textContent = customer.name || 'DRK Kreisverband';
@@ -1042,6 +1044,14 @@ input[type="radio"][name="type"]:checked::after {
                                 customer.city || ''
                             ].filter(Boolean).join(' ').replace(' ,', ',');
                             verbandAdresse.textContent = adresse || '';
+                        }
+
+                        // Footer: Kundenname und Datenschutzlink
+                        if (footerKundeName) {
+                            footerKundeName.textContent = customer.name || 'DRK Kreisverband';
+                        }
+                        if (datenschutzLink && customer.privacy_policy_url) {
+                            datenschutzLink.href = customer.privacy_policy_url;
                         }
                     }
                 }

@@ -1189,111 +1189,23 @@
 
 <script>
 // ============================================
+// SUPABASE CLIENT (von Shell holen)
+// ============================================
+const supabase = window.parent.supabase;
+
+// ============================================
 // showToast und showConfirm kommen aus main.js
 // ============================================
 
 // ============================================
-// DATA
+// DATA - wird aus Supabase geladen
 // ============================================
 
-// Dummy employee data
-const employees = [
-    { id: 1, name: 'Max Kellermann', role: 'EMM', additionalRoles: ['quality_manager'] },
-    { id: 2, name: 'Anna Schmidt', role: 'CEMM', additionalRoles: ['quality_manager', 'recruiting_manager'] },
-    { id: 3, name: 'Thomas Müller', role: 'SMA', additionalRoles: [] },
-    { id: 4, name: 'Lisa Weber', role: 'SMA', additionalRoles: ['quality_manager'] },
-    { id: 5, name: 'Peter Fischer', role: 'SPB', additionalRoles: [] },
-    { id: 6, name: 'Sarah Klein', role: 'SMA', additionalRoles: [] },
-    { id: 7, name: 'Michael Becker', role: 'SMA', additionalRoles: ['recruiting_manager'] },
-    { id: 8, name: 'Julia Hoffmann', role: 'EMA', additionalRoles: [] },
-    { id: 9, name: 'Daniel Wagner', role: 'JMM', additionalRoles: [] },
-    { id: 10, name: 'Laura Schneider', role: 'SMA', additionalRoles: [] },
-    { id: 11, name: 'Markus Braun', role: 'EMA', additionalRoles: ['quality_manager'] },
-    { id: 12, name: 'Sophie Meyer', role: 'SMA', additionalRoles: [] },
-    { id: 13, name: 'Florian Wolf', role: 'JMM', additionalRoles: [] },
-    { id: 14, name: 'Hannah Richter', role: 'SMA', additionalRoles: [] },
-    { id: 15, name: 'Tobias Krause', role: 'EMA', additionalRoles: [] },
-    { id: 16, name: 'Lena Hartmann', role: 'SMA', additionalRoles: [] },
-    { id: 17, name: 'Christian Zimmer', role: 'KAD', additionalRoles: ['quality_manager'] },
-    { id: 18, name: 'Marie König', role: 'SMA', additionalRoles: [] },
-    { id: 19, name: 'Sebastian Fuchs', role: 'FUE', additionalRoles: [] },
-    { id: 20, name: 'Nina Berger', role: 'SMA', additionalRoles: [] }
-];
+// Employees/Werber (wird aus Supabase geladen)
+let employees = [];
 
-// Campaign storage
-let campaigns = [
-    {
-        id: 1,
-        name: 'DRK Frühjahr',
-        year: 2024,
-        kwFrom: 10,
-        kwTo: 15,
-        einsatzgebiete: [
-            { id: 'berlin-mitte', name: 'Berlin-Mitte e.V.', plz: '10115', einwohner: 85000, rahmenvertrag: 'RV-2024-001' },
-            { id: 'berlin-kreuzberg', name: 'Berlin-Kreuzberg e.V.', plz: '10961', einwohner: 72000, rahmenvertrag: 'RV-2024-001' },
-            { id: 'berlin-prenzlberg', name: 'Prenzlauer Berg e.V.', plz: '10405', einwohner: 65000, rahmenvertrag: 'RV-2024-002' },
-            { id: 'berlin-neukoelln', name: 'Berlin-Neukölln e.V.', plz: '12043', einwohner: 78000, rahmenvertrag: 'RV-2024-001' },
-            { id: 'berlin-charlottenburg', name: 'Charlottenburg e.V.', plz: '10585', einwohner: 92000, rahmenvertrag: 'RV-2024-002' },
-            { id: 'berlin-friedrichshain', name: 'Friedrichshain e.V.', plz: '10243', einwohner: 68000, rahmenvertrag: 'RV-2024-001' },
-            { id: 'berlin-schoeneberg', name: 'Schöneberg e.V.', plz: '10823', einwohner: 74000, rahmenvertrag: 'RV-2024-002' }
-        ],
-        assignments: {
-            10: { teamchef: 1, werber: [2, 4] },
-            11: { teamchef: 1, werber: [2, 3, 5] },
-            12: { teamchef: 1, werber: [4, 5, 6] },
-            13: { teamchef: 2, werber: [3, 6, 7] },
-            14: { teamchef: 1, werber: [3, 5, 7] },
-            15: { teamchef: 2, werber: [4, 6] }
-        }
-    },
-    {
-        id: 2,
-        name: 'UNICEF Sommer',
-        year: 2024,
-        kwFrom: 25,
-        kwTo: 30,
-        einsatzgebiete: [
-            { id: 'muc-zentrum', name: 'München-Zentrum', plz: '80331', einwohner: 125000, rahmenvertrag: 'RV-UNICEF-2024' },
-            { id: 'muc-nord', name: 'München-Nord', plz: '80933', einwohner: 78000 } // Kein Vertrag
-        ],
-        assignments: {
-            25: { teamchef: 2, werber: [3, 4] },
-            26: { teamchef: 2, werber: [4, 5] },
-            27: { teamchef: 2, werber: [3, 5, 6] },
-            28: { teamchef: 3, werber: [4, 6, 7] },
-            29: { teamchef: 2, werber: [5, 6] },
-            30: { teamchef: 3, werber: [4, 7] }
-        }
-    },
-    {
-        id: 3,
-        name: 'Greenpeace Herbst',
-        year: 2024,
-        kwFrom: 38,
-        kwTo: 42,
-        einsatzgebiete: [
-            { id: 'hh-altona', name: 'Hamburg-Altona', plz: '22765', einwohner: 95000, rahmenvertrag: 'RV-GP-2024' }
-        ],
-        assignments: {
-            38: { teamchef: 1, werber: [2, 3] },
-            39: { teamchef: 1, werber: [3, 4] }
-        }
-    },
-    {
-        id: 4,
-        name: 'WWF Winter',
-        year: 2024,
-        kwFrom: 48,
-        kwTo: 52,
-        einsatzgebiete: [
-            { id: 'koeln-zentrum', name: 'Köln-Zentrum', plz: '50667', einwohner: 110000, rahmenvertrag: 'RV-WWF-2024' }
-        ],
-        assignments: {
-            48: { teamchef: 2, werber: [4, 5] },
-            49: { teamchef: 2, werber: [5, 6] }
-        }
-    }
-];
+// Campaign storage (wird aus Supabase geladen)
+let campaigns = [];
 
 let editingCampaignId = null;
 
@@ -1306,6 +1218,192 @@ let attendanceData = {};
 
 // Wochentage
 const weekDays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+// ============================================
+// SUPABASE DATA LOADING
+// ============================================
+
+// Rollen-Mapping für Karrierestufen
+const ROLE_TO_STUFE = {
+    'starting_marketing_advisor': 'SMA',
+    'executive_marketing_advisor': 'EMA',
+    'junior_marketing_manager': 'JMM',
+    'executive_marketing_manager': 'EMM',
+    'senior_marketing_manager': 'SMM',
+    'chief_executive_marketing_manager': 'CEMM',
+    'spitzen_botschafter': 'SPB',
+    'kadermanager': 'KAD',
+    'führungsebene': 'FUE',
+    'sma': 'SMA', 'ema': 'EMA', 'jmm': 'JMM', 'emm': 'EMM',
+    'smm': 'SMM', 'cemm': 'CEMM', 'spb': 'SPB', 'kad': 'KAD', 'fue': 'FUE'
+};
+
+// Werber/Employees aus Supabase laden
+async function loadEmployeesFromSupabase() {
+    if (!supabase) {
+        console.error('Supabase client nicht verfügbar');
+        return [];
+    }
+
+    try {
+        // Users laden
+        const { data: usersData, error: usersError } = await supabase
+            .from('users')
+            .select('*')
+            .order('name', { ascending: true });
+
+        if (usersError) throw usersError;
+
+        // Karrierestufen laden
+        const today = new Date().toISOString().split('T')[0];
+        const { data: careerData } = await supabase
+            .from('user_roles')
+            .select('*')
+            .eq('role_type', 'career')
+            .lte('assigned_at', today)
+            .or(`valid_until.gte.${today},valid_until.is.null`);
+
+        return usersData.map(user => {
+            const career = careerData?.find(c => c.user_id === user.id);
+            const careerName = career?.role_name?.toLowerCase() || '';
+            const stufe = ROLE_TO_STUFE[careerName] || 'SMA';
+
+            return {
+                id: user.id,
+                name: user.name || user.email,
+                role: stufe,
+                additionalRoles: []
+            };
+        });
+    } catch (error) {
+        console.error('Fehler beim Laden der Werber:', error);
+        return [];
+    }
+}
+
+// Kampagnen aus Supabase laden
+async function loadCampaignsFromSupabase() {
+    if (!supabase) {
+        console.error('Supabase client nicht verfügbar');
+        return [];
+    }
+
+    try {
+        // Kampagnen laden
+        const { data: campaignsData, error: campaignsError } = await supabase
+            .from('campaigns')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (campaignsError) throw campaignsError;
+
+        // Für jede Kampagne: Areas und Assignments laden
+        const campaignsWithDetails = await Promise.all(campaignsData.map(async (campaign) => {
+            // Campaign Areas laden
+            const { data: areasData } = await supabase
+                .from('campaign_areas')
+                .select('*')
+                .eq('campaign_id', campaign.id);
+
+            // Assignments laden
+            const { data: assignmentsData } = await supabase
+                .from('campaign_assignments')
+                .select('*, campaign_assignment_werber(*)')
+                .eq('campaign_id', campaign.id);
+
+            // Assignments in das erwartete Format konvertieren
+            const assignments = {};
+            if (assignmentsData) {
+                assignmentsData.forEach(a => {
+                    assignments[a.kw] = {
+                        teamchef: a.teamchef_id,
+                        werber: a.campaign_assignment_werber?.map(w => w.werber_id) || []
+                    };
+                });
+            }
+
+            // Einsatzgebiete in das erwartete Format konvertieren
+            const einsatzgebiete = (areasData || []).map(area => ({
+                id: area.id,
+                name: area.name,
+                plz: area.plz,
+                einwohner: area.einwohner || 0,
+                rahmenvertrag: area.rahmenvertrag_name
+            }));
+
+            return {
+                id: campaign.id,
+                name: campaign.name,
+                year: campaign.year || new Date().getFullYear(),
+                kwFrom: campaign.kw_from || 1,
+                kwTo: campaign.kw_to || 52,
+                customer_id: campaign.customer_id,
+                pufferPercent: campaign.puffer_percent || 10,
+                wartezeitWochen: campaign.wartezeit_wochen || 4,
+                einsatzgebiete: einsatzgebiete,
+                assignments: assignments
+            };
+        }));
+
+        return campaignsWithDetails;
+    } catch (error) {
+        console.error('Fehler beim Laden der Kampagnen:', error);
+        return [];
+    }
+}
+
+// Anwesenheitsdaten aus Supabase laden
+async function loadAttendanceFromSupabase(campaignId) {
+    if (!supabase) return;
+
+    try {
+        const { data, error } = await supabase
+            .from('campaign_attendance')
+            .select('*, campaign_attendance_notes(*)')
+            .eq('campaign_id', campaignId);
+
+        if (error) throw error;
+
+        // In lokales Format konvertieren
+        if (!attendanceData[campaignId]) attendanceData[campaignId] = {};
+
+        data?.forEach(record => {
+            if (!attendanceData[campaignId][record.kw]) {
+                attendanceData[campaignId][record.kw] = {};
+            }
+            attendanceData[campaignId][record.kw][record.user_id] = {
+                id: record.id,
+                days: [record.day_0, record.day_1, record.day_2, record.day_3, record.day_4, record.day_5, record.day_6],
+                notes: (record.campaign_attendance_notes || []).map(n => ({
+                    id: n.id,
+                    timestamp: new Date(n.created_at).toLocaleString('de-DE'),
+                    text: n.note_text
+                }))
+            };
+        });
+    } catch (error) {
+        console.error('Fehler beim Laden der Anwesenheit:', error);
+    }
+}
+
+// Alle Daten initial laden
+async function loadAllData() {
+    console.log('Lade Daten aus Supabase...');
+
+    // Parallel laden
+    const [loadedEmployees, loadedCampaigns] = await Promise.all([
+        loadEmployeesFromSupabase(),
+        loadCampaignsFromSupabase()
+    ]);
+
+    employees = loadedEmployees;
+    campaigns = loadedCampaigns;
+
+    console.log(`Geladen: ${employees.length} Werber, ${campaigns.length} Kampagnen`);
+
+    // UI aktualisieren
+    renderCampaigns();
+}
 
 // Anwesenheit initialisieren für einen Mitarbeiter in einer KW
 function initAttendance(campaignId, kw, memberId) {
@@ -1321,7 +1419,7 @@ function initAttendance(campaignId, kw, memberId) {
 }
 
 // Anwesenheit für einen Tag togglen
-function toggleAttendance(campaignId, kw, memberId, dayIndex) {
+async function toggleAttendance(campaignId, kw, memberId, dayIndex) {
     const data = initAttendance(campaignId, kw, memberId);
     data.days[dayIndex] = !data.days[dayIndex];
 
@@ -1332,8 +1430,45 @@ function toggleAttendance(campaignId, kw, memberId, dayIndex) {
         btn.classList.toggle('absent', !data.days[dayIndex]);
     }
 
-    // Auto-save (hier könnte ein API-Call kommen)
-    console.log('Anwesenheit gespeichert:', { campaignId, kw, memberId, dayIndex, present: data.days[dayIndex] });
+    // In Supabase speichern
+    try {
+        const dayColumn = `day_${dayIndex}`;
+
+        // Prüfen ob Record existiert
+        if (data.id) {
+            // Update
+            await supabase
+                .from('campaign_attendance')
+                .update({ [dayColumn]: data.days[dayIndex] })
+                .eq('id', data.id);
+        } else {
+            // Insert
+            const insertData = {
+                campaign_id: campaignId,
+                user_id: memberId,
+                kw: kw,
+                day_0: data.days[0],
+                day_1: data.days[1],
+                day_2: data.days[2],
+                day_3: data.days[3],
+                day_4: data.days[4],
+                day_5: data.days[5],
+                day_6: data.days[6]
+            };
+
+            const { data: newRecord, error } = await supabase
+                .from('campaign_attendance')
+                .upsert(insertData, { onConflict: 'campaign_id,user_id,kw' })
+                .select()
+                .single();
+
+            if (!error && newRecord) {
+                data.id = newRecord.id;
+            }
+        }
+    } catch (error) {
+        console.error('Fehler beim Speichern der Anwesenheit:', error);
+    }
 }
 
 // Notizen-Modal öffnen
@@ -1387,7 +1522,7 @@ function renderNotesList(notes) {
 }
 
 // Notiz speichern
-function saveNote() {
+async function saveNote() {
     const modal = document.getElementById('attendanceNotesModal');
     const textarea = document.getElementById('notesModalTextarea');
     const text = textarea.value.trim();
@@ -1397,9 +1532,9 @@ function saveNote() {
         return;
     }
 
-    const campaignId = parseInt(modal.dataset.campaignId);
+    const campaignId = modal.dataset.campaignId;
     const kw = parseInt(modal.dataset.kw);
-    const memberId = parseInt(modal.dataset.memberId);
+    const memberId = modal.dataset.memberId;
 
     const data = initAttendance(campaignId, kw, memberId);
 
@@ -1413,21 +1548,63 @@ function saveNote() {
         minute: '2-digit'
     });
 
-    // Notiz hinzufügen
-    data.notes.push({ timestamp, text });
+    try {
+        // Erst sicherstellen, dass Attendance-Record existiert
+        if (!data.id) {
+            const insertData = {
+                campaign_id: campaignId,
+                user_id: memberId,
+                kw: kw,
+                day_0: data.days[0],
+                day_1: data.days[1],
+                day_2: data.days[2],
+                day_3: data.days[3],
+                day_4: data.days[4],
+                day_5: data.days[5],
+                day_6: data.days[6]
+            };
 
-    // UI aktualisieren
-    renderNotesList(data.notes);
-    textarea.value = '';
+            const { data: newRecord, error } = await supabase
+                .from('campaign_attendance')
+                .upsert(insertData, { onConflict: 'campaign_id,user_id,kw' })
+                .select()
+                .single();
 
-    // Notizen-Button aktualisieren (has-notes Klasse)
-    const notesBtn = document.querySelector(`[data-notes="${campaignId}-${kw}-${memberId}"]`);
-    if (notesBtn) {
-        notesBtn.classList.add('has-notes');
+            if (error) throw error;
+            data.id = newRecord.id;
+        }
+
+        // Notiz in Supabase speichern
+        const { data: noteData, error: noteError } = await supabase
+            .from('campaign_attendance_notes')
+            .insert({
+                attendance_id: data.id,
+                note_text: text
+            })
+            .select()
+            .single();
+
+        if (noteError) throw noteError;
+
+        // Notiz lokal hinzufügen
+        data.notes.push({ id: noteData.id, timestamp, text });
+
+        // UI aktualisieren
+        renderNotesList(data.notes);
+        textarea.value = '';
+
+        // Notizen-Button aktualisieren (has-notes Klasse)
+        const notesBtn = document.querySelector(`[data-notes="${campaignId}-${kw}-${memberId}"]`);
+        if (notesBtn) {
+            notesBtn.classList.add('has-notes');
+        }
+
+        showToast('Notiz gespeichert', 'success');
+
+    } catch (error) {
+        console.error('Fehler beim Speichern der Notiz:', error);
+        showToast('Fehler beim Speichern: ' + error.message, 'error');
     }
-
-    showToast('Notiz gespeichert', 'success');
-    console.log('Notiz gespeichert:', { campaignId, kw, memberId, note: { timestamp, text } });
 }
 
 // escapeHtml kommt aus main.js
@@ -3424,14 +3601,25 @@ function renderKWDetails(campaign) {
 // ============================================
 
 // Teamchef für KW setzen
-function setKWTeamchef(kw, tcId) {
+async function setKWTeamchef(kw, tcId) {
     const campaign = campaigns.find(c => c.id === viewingCampaignId);
     if (!campaign) return;
 
     if (!campaign.assignments[kw]) {
         campaign.assignments[kw] = {};
     }
-    campaign.assignments[kw].teamchef = tcId ? parseInt(tcId) : null;
+    campaign.assignments[kw].teamchef = tcId || null;
+
+    // In Supabase speichern
+    try {
+        await supabase
+            .from('campaign_assignments')
+            .update({ teamchef_id: tcId || null })
+            .eq('campaign_id', campaign.id)
+            .eq('kw', kw);
+    } catch (error) {
+        console.error('Fehler beim Speichern des Teamchefs:', error);
+    }
 
     showToast(`Teamchef für KW ${kw} ${tcId ? 'gesetzt' : 'entfernt'}`, 'success');
     // View aktualisieren (expanded-Zustand erhalten)
@@ -3586,9 +3774,9 @@ async function removeKWDienst(kw, index) {
 }
 
 // Mitglied zur KW hinzufügen
-function addKWMember(kw) {
+async function addKWMember(kw) {
     const select = document.getElementById(`add-member-kw-${kw}`);
-    const memberId = select?.value ? parseInt(select.value) : null;
+    const memberId = select?.value || null;
 
     if (!memberId) {
         showToast('Bitte Mitarbeiter auswählen', 'warning');
@@ -3608,6 +3796,28 @@ function addKWMember(kw) {
     if (campaign.assignments[kw].werber.includes(memberId)) {
         showToast('Mitarbeiter bereits in dieser KW', 'warning');
         return;
+    }
+
+    // In Supabase speichern
+    try {
+        // Assignment-ID holen
+        const { data: assignment } = await supabase
+            .from('campaign_assignments')
+            .select('id')
+            .eq('campaign_id', campaign.id)
+            .eq('kw', kw)
+            .single();
+
+        if (assignment) {
+            await supabase
+                .from('campaign_assignment_werber')
+                .insert({
+                    assignment_id: assignment.id,
+                    werber_id: memberId
+                });
+        }
+    } catch (error) {
+        console.error('Fehler beim Hinzufügen des Werbers:', error);
     }
 
     campaign.assignments[kw].werber.push(memberId);
@@ -3636,6 +3846,26 @@ async function removeKWMember(kw, memberId) {
 
     const index = campaign.assignments[kw].werber.indexOf(memberId);
     if (index > -1) {
+        // Aus Supabase löschen
+        try {
+            const { data: assignment } = await supabase
+                .from('campaign_assignments')
+                .select('id')
+                .eq('campaign_id', campaign.id)
+                .eq('kw', kw)
+                .single();
+
+            if (assignment) {
+                await supabase
+                    .from('campaign_assignment_werber')
+                    .delete()
+                    .eq('assignment_id', assignment.id)
+                    .eq('werber_id', memberId);
+            }
+        } catch (error) {
+            console.error('Fehler beim Entfernen des Werbers:', error);
+        }
+
         campaign.assignments[kw].werber.splice(index, 1);
         showToast(`Mitarbeiter aus KW ${kw} entfernt`, 'success');
         // View aktualisieren (expanded-Zustand erhalten)
@@ -4663,30 +4893,65 @@ async function saveCampaign() {
         return;
     }
 
-    // Erstelle leere assignments für jede KW
-    const assignments = {};
-    for (let kw = kwFrom; kw <= kwTo; kw++) {
-        assignments[kw] = { teamchef: null, werber: [] };
+    try {
+        // In Supabase speichern
+        const { data: newCampaignData, error } = await supabase
+            .from('campaigns')
+            .insert({
+                name: name,
+                year: year,
+                kw_from: kwFrom,
+                kw_to: kwTo,
+                status: 'active'
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // Leere Assignments für jede KW erstellen
+        const assignmentInserts = [];
+        for (let kw = kwFrom; kw <= kwTo; kw++) {
+            assignmentInserts.push({
+                campaign_id: newCampaignData.id,
+                kw: kw,
+                teamchef_id: null
+            });
+        }
+
+        if (assignmentInserts.length > 0) {
+            await supabase.from('campaign_assignments').insert(assignmentInserts);
+        }
+
+        // Lokale Daten aktualisieren
+        const newCampaign = {
+            id: newCampaignData.id,
+            name: name,
+            year: year,
+            kwFrom: kwFrom,
+            kwTo: kwTo,
+            einsatzgebiete: [],
+            assignments: {}
+        };
+
+        // Leere Assignments lokal erstellen
+        for (let kw = kwFrom; kw <= kwTo; kw++) {
+            newCampaign.assignments[kw] = { teamchef: null, werber: [] };
+        }
+
+        campaigns.push(newCampaign);
+
+        closeCampaignModal();
+        renderCampaigns();
+        showToast('Kampagne erfolgreich erstellt', 'success');
+
+        // Öffne direkt die Detailansicht der neuen Kampagne
+        viewCampaign(newCampaign.id);
+
+    } catch (error) {
+        console.error('Fehler beim Speichern der Kampagne:', error);
+        showToast('Fehler beim Speichern: ' + error.message, 'error');
     }
-
-    // Create new campaign
-    const newCampaign = {
-        id: Date.now(), // Unique ID
-        name,
-        year,
-        kwFrom,
-        kwTo,
-        einsatzgebiete: [],
-        assignments
-    };
-    campaigns.push(newCampaign);
-
-    closeCampaignModal();
-    renderCampaigns();
-    showToast('Kampagne erfolgreich erstellt', 'success');
-
-    // Öffne direkt die Detailansicht der neuen Kampagne
-    viewCampaign(newCampaign.id);
 }
 
 // Edit campaign
@@ -4765,27 +5030,29 @@ const customerContracts = {
     ]
 };
 
-// Initial render
-renderCampaigns();
+// Initial render - Daten aus Supabase laden
+(async function init() {
+    await loadAllData();
 
-// Check for URL parameter or sessionStorage to open view modal
-const urlParams = new URLSearchParams(window.location.search);
-let viewId = urlParams.get('view');
+    // Check for URL parameter or sessionStorage to open view modal
+    const urlParams = new URLSearchParams(window.location.search);
+    let viewId = urlParams.get('view');
 
-// Also check sessionStorage (set from Kunden page navigation)
-if (!viewId) {
-    viewId = sessionStorage.getItem('viewCampaignId');
+    // Also check sessionStorage (set from Kunden page navigation)
+    if (!viewId) {
+        viewId = sessionStorage.getItem('viewCampaignId');
+        if (viewId) {
+            sessionStorage.removeItem('viewCampaignId'); // Clear after reading
+        }
+    }
+
     if (viewId) {
-        sessionStorage.removeItem('viewCampaignId'); // Clear after reading
+        const campaign = campaigns.find(c => c.id === viewId || c.id === parseInt(viewId));
+        if (campaign) {
+            viewCampaign(campaign.id);
+        }
     }
-}
-
-if (viewId) {
-    const campaignId = parseInt(viewId);
-    if (campaignId && campaigns.find(c => c.id === campaignId)) {
-        viewCampaign(campaignId);
-    }
-}
+})();
 
 // Listen for messages from parent shell
 window.addEventListener('message', function(e) {

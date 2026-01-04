@@ -1030,6 +1030,8 @@ input[type="radio"][name="type"]:checked::after {
                     .single();
 
                 if (area) {
+                    console.log('Campaign Area loaded:', area);
+                    console.log('Area name:', area.name);
                     formContext.customer_id = area.campaigns?.customer_id;
 
                     // Kundendaten im Header anzeigen

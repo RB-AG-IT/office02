@@ -2242,7 +2242,7 @@ function renderAvailableWerbegebiete() {
 }
 
 // WG zur Kampagne hinzufügen
-function addWgToCampaign(wgId) {
+async function addWgToCampaign(wgId) {
     const werbegebiete = kundenWerbegebiete[selectedWgKunde] || [];
     const wg = werbegebiete.find(w => w.id === wgId);
     if (!wg) return;
@@ -2252,47 +2252,72 @@ function addWgToCampaign(wgId) {
     const kwFrom = campaign?.kwFrom || 1;
     const kwTo = campaign?.kwTo || 12;
 
-    const wgConfig = {
-        ...wg,
-        kunde: selectedWgKunde,
-        kundeName: getKundeName(selectedWgKunde),
-        kws: Array.from({length: kwTo - kwFrom + 1}, (_, i) => kwFrom + i), // Alle KWs aktiviert
-        sondierung: { j1: 80, j2: 50, j3: 30, j4: 0, j5: 0, limit: 100, limitType: 'mg' },
-        regular: { j1: 60, j2: 40, j3: 20, j4: 0, j5: 0 },
-        qualitaetsbonus: {
-            aktiv: true,
-            regeln: [
-                { storno: 15, pp: 3 },
-                { storno: 12, pp: 3 },
-                { storno: 10, pp: 3 },
-                { storno: 8, pp: 1 }
-            ]
-        },
-        teilverguetung: false,
-        teilvProzent: 50,
-        stornopuffer: 10,
-        endabrWochen: 8,
-        kosten: {
-            kfz: { aktiv: false, art: 'aufwand', betrag: '', zeitraum: 'woche' },
-            kleidung: { aktiv: false, art: 'aufwand', betrag: '', pro: 'person', zeitraum: 'woche' },
-            ausweise: { aktiv: false, art: 'aufwand', betrag: '', pro: 'person', zeitraum: 'woche' }
-        },
-        gruppenbild: null,
-        sonderposten: [],
-        rahmenvertrag: '',
-        avv: ''
-    };
+    // In Supabase speichern (INSERT mit customer_area_id Referenz)
+    try {
+        const { data: newArea, error } = await supabase
+            .from('campaign_areas')
+            .insert({
+                campaign_id: viewingCampaignId,
+                customer_area_id: wgId, // Referenz auf customer_areas
+                name: wg.name,
+                plz: wg.postal_code || wg.plz,
+                einwohner: wg.einwohner || 0
+            })
+            .select()
+            .single();
 
-    campaignWerbegebiete.push(wgConfig);
+        if (error) throw error;
 
-    renderAvailableWerbegebiete();
-    updateAddedWgList();
+        const wgConfig = {
+            id: newArea.id, // ID aus campaign_areas verwenden
+            customer_area_id: wgId,
+            name: wg.name,
+            plz: wg.postal_code || wg.plz,
+            einwohner: wg.einwohner || 0,
+            kunde: selectedWgKunde,
+            kundeName: getKundeName(selectedWgKunde),
+            kws: Array.from({length: kwTo - kwFrom + 1}, (_, i) => kwFrom + i),
+            sondierung: { j1: 80, j2: 50, j3: 30, j4: 0, j5: 0, limit: 100, limitType: 'mg' },
+            regular: { j1: 60, j2: 40, j3: 20, j4: 0, j5: 0 },
+            qualitaetsbonus: {
+                aktiv: true,
+                regeln: [
+                    { storno: 15, pp: 3 },
+                    { storno: 12, pp: 3 },
+                    { storno: 10, pp: 3 },
+                    { storno: 8, pp: 1 }
+                ]
+            },
+            teilverguetung: false,
+            teilvProzent: 50,
+            stornopuffer: 10,
+            endabrWochen: 8,
+            kosten: {
+                kfz: { aktiv: false, art: 'aufwand', betrag: '', zeitraum: 'woche' },
+                kleidung: { aktiv: false, art: 'aufwand', betrag: '', pro: 'person', zeitraum: 'woche' },
+                ausweise: { aktiv: false, art: 'aufwand', betrag: '', pro: 'person', zeitraum: 'woche' }
+            },
+            gruppenbild: null,
+            sonderposten: [],
+            rahmenvertrag: '',
+            avv: ''
+        };
 
-    // Direkt zur Konfiguration öffnen und im Edit-Modus starten
-    openWgConfig(wgId);
-    setWgConfigEditable(true);
+        campaignWerbegebiete.push(wgConfig);
 
-    showToast(`${wg.name} hinzugefügt`, 'success');
+        renderAvailableWerbegebiete();
+        updateAddedWgList();
+
+        // Direkt zur Konfiguration öffnen und im Edit-Modus starten
+        openWgConfig(newArea.id);
+        setWgConfigEditable(true);
+
+        showToast(`${wg.name} hinzugefügt`, 'success');
+
+    } catch (error) {
+        console.error('Fehler beim Hinzufügen des Werbegebiets:', error);
+        showToast('Fehler beim Hinzufügen: ' + error.message, 'error');
+    }
 }
 
 // Kunde Name holen

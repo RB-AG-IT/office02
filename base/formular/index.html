@@ -917,7 +917,89 @@ input[type="radio"][name="type"]:checked::after {
         </form>
     </div>
 
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <script>
+        // ================================================================
+        // SUPABASE CONFIGURATION
+        // ================================================================
+        const SUPABASE_URL = 'https://lgztglycqtiwcmiydxnm.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnenRnbHljcXRpd2NtaXlkeG5tIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzgwNzYxNSwiZXhwIjoyMDc5MzgzNjE1fQ.54kSk9ZSUdQt6LKYWkblqgR6Sjev80W80qkNHYEbPgk';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ================================================================
+        // URL PARAMETER HANDLING
+        // ================================================================
+        const urlParams = new URLSearchParams(window.location.search);
+        const formContext = {
+            campaign_id: urlParams.get('kampagne') || urlParams.get('campaign'),
+            campaign_area_id: urlParams.get('werbegebiet') || urlParams.get('wg') || urlParams.get('area'),
+            botschafter_id: urlParams.get('botschafter') || urlParams.get('werber'),
+            teamchef_id: null,
+            quality_id: null,
+            customer_id: null,
+            kw: null,
+            year: null
+        };
+
+        // Aktuelle KW und Jahr berechnen
+        function getCurrentKW() {
+            const now = new Date();
+            const startOfYear = new Date(now.getFullYear(), 0, 1);
+            const days = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000));
+            return Math.ceil((days + startOfYear.getDay() + 1) / 7);
+        }
+
+        formContext.kw = parseInt(urlParams.get('kw')) || getCurrentKW();
+        formContext.year = parseInt(urlParams.get('year')) || new Date().getFullYear();
+
+        // Kontext laden (Teamchef, Quality, Customer aus Kampagne/Area)
+        async function loadFormContext() {
+            if (!formContext.campaign_id || !formContext.campaign_area_id) {
+                console.warn('Keine Kampagne oder Werbegebiet in URL');
+                return;
+            }
+
+            try {
+                // Assignment für aktuelle KW laden (Teamchef, Quality)
+                const { data: assignment } = await supabase
+                    .from('campaign_assignments')
+                    .select('teamchef_id, quality_manager_id')
+                    .eq('campaign_id', formContext.campaign_id)
+                    .eq('kw', formContext.kw)
+                    .single();
+
+                if (assignment) {
+                    formContext.teamchef_id = assignment.teamchef_id;
+                    formContext.quality_id = assignment.quality_manager_id;
+                }
+
+                // Campaign Area laden (für Customer)
+                const { data: area } = await supabase
+                    .from('campaign_areas')
+                    .select('*, campaigns(customer_id)')
+                    .eq('id', formContext.campaign_area_id)
+                    .single();
+
+                if (area) {
+                    formContext.customer_id = area.campaigns?.customer_id;
+                }
+
+                console.log('Form context loaded:', formContext);
+
+            } catch (error) {
+                console.error('Fehler beim Laden des Kontexts:', error);
+            }
+        }
+
+        // Kontext beim Laden initialisieren
+        loadFormContext();
+
+        // ================================================================
+        // EXISTING CODE
+        // ================================================================
+
         // Simulated member data for search
         const existingMembers = [
             { id: 1, name: 'Schmidt, Hans', street: 'Hauptstraße 12', zipCode: '12345', city: 'Musterstadt', memberNumber: 'M001', memberSince: '2020-01-15', amount: 10, iban: 'DE89370400440532013000', accountHolder: 'Hans Schmidt', bank: 'Sparkasse Musterstadt', bic: 'SPKADE2HXXX' },
@@ -1839,42 +1921,9 @@ const streetResults = data.results.filter(result => {
             btn.innerHTML = 'Wird übermittelt... <span class="loading"></span>';
 
             // Collect form data
-            const formData = {
-                type: document.querySelector('input[name="type"]:checked').value,
-                company: document.getElementById('company').value,
-                salutation: document.getElementById('salutation').value,
-                title: document.getElementById('title').value,
-                firstName: document.getElementById('firstName').value,
-                lastName: document.getElementById('lastName').value,
-                birthDate: document.getElementById('birthDate').value,
-                email: document.getElementById('email').value,
-                phoneFixed: document.getElementById('phoneFixed').value,
-                phoneMobile: document.getElementById('phoneMobile').value,
-                street: document.getElementById('street').value,
-                houseNumber: document.getElementById('houseNumber').value,
-                zipCode: document.getElementById('zipCode').value,
-                city: document.getElementById('city').value,
-                iban: document.getElementById('iban').value,
-                amount: parseFloat(document.getElementById('customAmount').value) || 10,
-                interval: document.getElementById('interval').value,
-                paymentMethod: document.querySelector('input[name="paymentMethod"]:checked').value,
-                consent1: document.getElementById('consent1').checked,
-                consent2: document.getElementById('consent2').checked,
-                consent3: document.getElementById('consent3').checked,
-                contactEmail: document.getElementById('contactEmail').checked,
-                contactPhone: document.getElementById('contactPhone').checked,
-                laterStartDate: document.getElementById('laterStartDate').value,
-                notes: document.getElementById('notes').value,
-                signature: document.getElementById('signatureCanvas').toDataURL(),
-                created_at: new Date().toISOString()
-            };
-
-            // Add ERH specific fields
-            if (formData.type === 'ERH') {
-                formData.memberNumber = document.getElementById('memberNumber').value;
-                formData.memberSince = document.getElementById('memberSince').value;
-                formData.oldAmount = parseFloat(document.getElementById('oldAmount').value);
-            }
+            const type = document.querySelector('input[name="type"]:checked').value;
+            const amount = parseFloat(document.getElementById('customAmount').value) || 10;
+            const interval = document.getElementById('interval').value;
 
             // Calculate yearly amount
             const multipliers = {
@@ -1883,31 +1932,114 @@ const streetResults = data.results.filter(result => {
                 'halfyearly': 2,
                 'yearly': 1
             };
-            formData.yearlyAmount = formData.amount * multipliers[formData.interval];
+            const yearlyAmount = amount * multipliers[interval];
 
-            console.log('Form data to submit:', formData);
+            // ERH specific
+            const oldAmount = type === 'ERH' ? parseFloat(document.getElementById('oldAmount').value) || 0 : null;
+            const increaseAmount = type === 'ERH' && oldAmount ? (yearlyAmount - (oldAmount * multipliers[interval])) : null;
 
-            // Simulate API call
-            setTimeout(() => {
+            // Build record for Supabase
+            const record = {
+                // Verknüpfungen (aus URL/Kontext)
+                campaign_id: formContext.campaign_id,
+                campaign_area_id: formContext.campaign_area_id,
+                werber_id: formContext.botschafter_id,
+                teamchef_id: formContext.teamchef_id,
+                quality_id: formContext.quality_id,
+                customer_id: formContext.customer_id,
+                kw: formContext.kw,
+                year: formContext.year,
+
+                // Datensatz-Typ und Status
+                record_type: type === 'ERH' ? 'erhoehung' : 'neumitglied',
+                record_status: 'aktiv',
+                status: 'pending',
+
+                // Persönliche Daten
+                salutation: document.getElementById('salutation').value,
+                title: document.getElementById('title').value,
+                first_name: document.getElementById('firstName').value,
+                last_name: document.getElementById('lastName').value,
+                company: document.getElementById('company').value,
+                birth_date: document.getElementById('birthDate').value || null,
+                email: document.getElementById('email').value,
+                phone_fixed: document.getElementById('phoneFixed').value,
+                phone_mobile: document.getElementById('phoneMobile').value,
+
+                // Adresse
+                street: document.getElementById('street').value,
+                house_number: document.getElementById('houseNumber').value,
+                zip_code: document.getElementById('zipCode').value,
+                city: document.getElementById('city').value,
+
+                // Zahlungsdaten
+                iban: document.getElementById('iban').value,
+                payment_method: document.querySelector('input[name="paymentMethod"]:checked').value,
+
+                // Beträge
+                amount: amount,
+                yearly_amount: yearlyAmount,
+                interval: interval,
+                old_amount: oldAmount,
+                increase_amount: increaseAmount,
+
+                // ERH spezifisch
+                member_number: type === 'ERH' ? document.getElementById('memberNumber').value : null,
+                member_since: type === 'ERH' && document.getElementById('memberSince').value ? document.getElementById('memberSince').value : null,
+                start_date: document.getElementById('laterStartDate').value || null,
+
+                // Einwilligungen
+                consent_privacy: document.getElementById('consent1').checked,
+                consent_sepa: document.getElementById('consent2').checked,
+                consent_statutes: document.getElementById('consent3').checked,
+                contact_email: document.getElementById('contactEmail').checked,
+                contact_phone: document.getElementById('contactPhone').checked,
+
+                // Sonstiges
+                notes: document.getElementById('notes').value,
+                signature: document.getElementById('signatureCanvas').toDataURL()
+            };
+
+            console.log('Saving record to Supabase:', record);
+
+            try {
+                // In Supabase speichern
+                const { data, error } = await supabase
+                    .from('records')
+                    .insert(record)
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                console.log('Record saved successfully:', data);
+
                 // Show success page
                 document.querySelector('.container').innerHTML = `
                     <div class="header">
                         <div class="drk-logo" style="margin: 0 auto; width: 100px; height: 100px; font-size: 40px;">DRK</div>
                     </div>
                     <div style="padding: 40px; text-align: center;">
-                        <h1 style="color: #667eea; margin-bottom: 20px;">Vielen Dank!</h1>
+                        <h1 style="color: #4caf50; margin-bottom: 20px;">✓ Erfolgreich gespeichert!</h1>
                         <p style="font-size: 18px; color: #666; margin-bottom: 30px;">
-                            Ihre Fördermitgliedschaft wurde erfolgreich registriert.
+                            ${type === 'ERH' ? 'Beitragserhöhung' : 'Neumitgliedschaft'} wurde erfolgreich erfasst.
                         </p>
-                        <p style="color: #888;">
-                            Sie erhalten in Kürze eine Bestätigungs-E-Mail mit allen Details.
+                        <p style="color: #888; margin-bottom: 10px;">
+                            <strong>${record.first_name} ${record.last_name}</strong><br>
+                            Jahresbeitrag: ${yearlyAmount.toFixed(2)} €
                         </p>
                         <button onclick="location.reload()" class="submit-btn" style="margin-top: 30px;">
                             Neues Formular
                         </button>
                     </div>
                 `;
-            }, 2000);
+
+            } catch (error) {
+                console.error('Fehler beim Speichern:', error);
+                btn.disabled = false;
+                btn.innerHTML = 'Jetzt überprüfen';
+                alert('Fehler beim Speichern: ' + error.message);
+            }
         }
     </script>
 </body>

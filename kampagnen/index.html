@@ -1297,7 +1297,7 @@ async function loadCampaignsFromSupabase() {
 
         if (campaignsError) throw campaignsError;
 
-        // Für jede Kampagne: Areas und Assignments laden
+        // Für jede Kampagne: Areas, Assignments und Challenges laden
         const campaignsWithDetails = await Promise.all(campaignsData.map(async (campaign) => {
             // Campaign Areas laden
             const { data: areasData } = await supabase
@@ -1311,14 +1311,38 @@ async function loadCampaignsFromSupabase() {
                 .select('*, campaign_assignment_werber(*)')
                 .eq('campaign_id', campaign.id);
 
+            // Challenges laden
+            const { data: challengesData } = await supabase
+                .from('campaign_challenges')
+                .select('*')
+                .eq('campaign_id', campaign.id);
+
             // Assignments in das erwartete Format konvertieren
             const assignments = {};
             if (assignmentsData) {
                 assignmentsData.forEach(a => {
                     assignments[a.kw] = {
                         teamchef: a.teamchef_id,
-                        werber: a.campaign_assignment_werber?.map(w => w.werber_id) || []
+                        qualityManager: a.quality_manager_id,
+                        werber: a.campaign_assignment_werber?.map(w => w.werber_id) || [],
+                        challenges: []
                     };
+                });
+            }
+
+            // Challenges den Assignments zuordnen
+            if (challengesData) {
+                challengesData.forEach(c => {
+                    if (assignments[c.kw]) {
+                        assignments[c.kw].challenges.push({
+                            id: c.id,
+                            type: c.challenge_type,
+                            ziel: c.ziel,
+                            belohnung: c.belohnung,
+                            completed: c.completed,
+                            createdAt: c.created_at
+                        });
+                    }
                 });
             }
 
@@ -1328,7 +1352,18 @@ async function loadCampaignsFromSupabase() {
                 name: area.name,
                 plz: area.plz,
                 einwohner: area.einwohner || 0,
-                rahmenvertrag: area.rahmenvertrag_name
+                rahmenvertrag: area.rahmenvertrag_name,
+                // Erweiterte Felder
+                provision_sondierung: area.provision_sondierung,
+                provision_regular: area.provision_regular,
+                qualitaetsbonus: area.qualitaetsbonus,
+                teilverguetung: area.teilverguetung,
+                teilv_prozent: area.teilv_prozent,
+                stornopuffer: area.stornopuffer,
+                endabr_wochen: area.endabr_wochen,
+                kosten: area.kosten,
+                sonderposten: area.sonderposten,
+                active_kws: area.active_kws
             }));
 
             return {
@@ -2010,19 +2045,56 @@ async function saveCampaignSettings() {
         return;
     }
 
-    // Kampagne aktualisieren
-    campaign.name = newName;
-    campaign.kwFrom = newKwFrom;
-    campaign.kwTo = newKwTo;
-    campaign.year = newYear;
+    // Start- und Enddatum aus KW berechnen
+    function getDateFromKW(kw, year) {
+        const jan4 = new Date(year, 0, 4);
+        const dayOfWeek = jan4.getDay() || 7;
+        const firstMonday = new Date(jan4);
+        firstMonday.setDate(jan4.getDate() - dayOfWeek + 1);
+        const targetDate = new Date(firstMonday);
+        targetDate.setDate(firstMonday.getDate() + (kw - 1) * 7);
+        return targetDate.toISOString().split('T')[0];
+    }
 
-    // Grid in Kampagnen-Übersicht aktualisieren
-    renderCampaignGrid();
+    const startDate = getDateFromKW(newKwFrom, newYear);
+    const endDateObj = new Date(getDateFromKW(newKwTo, newYear));
+    endDateObj.setDate(endDateObj.getDate() + 6);
+    const endDate = endDateObj.toISOString().split('T')[0];
 
-    // Edit-Modus beenden
-    toggleCampaignEditMode();
+    // In Supabase speichern
+    try {
+        const { error } = await supabase
+            .from('campaigns')
+            .update({
+                name: newName,
+                year: newYear,
+                kw_from: newKwFrom,
+                kw_to: newKwTo,
+                start_date: startDate,
+                end_date: endDate
+            })
+            .eq('id', viewingCampaignId);
 
-    showToast('Kampagnen-Einstellungen gespeichert', 'success');
+        if (error) throw error;
+
+        // Lokale Daten aktualisieren
+        campaign.name = newName;
+        campaign.kwFrom = newKwFrom;
+        campaign.kwTo = newKwTo;
+        campaign.year = newYear;
+
+        // Grid in Kampagnen-Übersicht aktualisieren
+        renderCampaignGrid();
+
+        // Edit-Modus beenden
+        toggleCampaignEditMode();
+
+        showToast('Kampagnen-Einstellungen gespeichert', 'success');
+
+    } catch (error) {
+        console.error('Fehler beim Speichern:', error);
+        showToast('Fehler beim Speichern: ' + error.message, 'error');
+    }
 }
 
 // ===================== WERBEGEBIETE & PROVISIONEN TAB =====================
@@ -2635,7 +2707,7 @@ async function removeWgFromCampaign() {
 }
 
 // WG Konfiguration speichern
-function saveWgConfig() {
+async function saveWgConfig() {
     const wg = campaignWerbegebiete.find(w => w.id === activeWgConfig);
     if (!wg) return;
 
@@ -2712,10 +2784,36 @@ function saveWgConfig() {
     wg.rahmenvertrag = document.getElementById('wgRahmenvertrag').value;
     wg.avv = document.getElementById('wgAvv').value;
 
-    showToast(`${wg.name} gespeichert`, 'success');
+    // In Supabase speichern
+    try {
+        const { error } = await supabase
+            .from('campaign_areas')
+            .update({
+                provision_sondierung: wg.sondierung,
+                provision_regular: wg.regular,
+                qualitaetsbonus: wg.qualitaetsbonus,
+                teilverguetung: wg.teilverguetung,
+                teilv_prozent: wg.teilvProzent,
+                stornopuffer: wg.stornopuffer,
+                endabr_wochen: wg.endabrWochen,
+                kosten: wg.kosten,
+                sonderposten: wg.sonderposten,
+                rahmenvertrag_name: wg.rahmenvertrag,
+                avv_url: wg.avv
+            })
+            .eq('id', wg.id);
 
-    // Edit-Modus beenden
-    setWgConfigEditable(false);
+        if (error) throw error;
+
+        showToast(`${wg.name} gespeichert`, 'success');
+
+        // Edit-Modus beenden
+        setWgConfigEditable(false);
+
+    } catch (error) {
+        console.error('Fehler beim Speichern der WG-Konfiguration:', error);
+        showToast('Fehler beim Speichern: ' + error.message, 'error');
+    }
 }
 
 // Toggle WG Edit-Modus
@@ -3576,14 +3674,26 @@ async function setKWTeamchef(kw, tcId) {
 }
 
 // Quality Manager für KW setzen
-function setKWQualityManager(kw, qmId) {
+async function setKWQualityManager(kw, qmId) {
     const campaign = campaigns.find(c => c.id === viewingCampaignId);
     if (!campaign) return;
 
     if (!campaign.assignments[kw]) {
         campaign.assignments[kw] = {};
     }
-    campaign.assignments[kw].qualityManager = qmId ? parseInt(qmId) : null;
+
+    // In Supabase speichern
+    try {
+        await supabase
+            .from('campaign_assignments')
+            .update({ quality_manager_id: qmId || null })
+            .eq('campaign_id', campaign.id)
+            .eq('kw', kw);
+    } catch (error) {
+        console.error('Fehler beim Speichern des Quality Managers:', error);
+    }
+
+    campaign.assignments[kw].qualityManager = qmId || null;
 
     showToast(`Quality Manager für KW ${kw} ${qmId ? 'gesetzt' : 'entfernt'}`, 'success');
     // View aktualisieren (expanded-Zustand erhalten)
@@ -3591,7 +3701,7 @@ function setKWQualityManager(kw, qmId) {
 }
 
 // Challenge hinzufügen (nur QM kann Challenges erstellen)
-function addKWChallenge(kw) {
+async function addKWChallenge(kw) {
     const campaign = campaigns.find(c => c.id === viewingCampaignId);
     if (!campaign) return;
 
@@ -3616,39 +3726,78 @@ function addKWChallenge(kw) {
         return;
     }
 
-    if (!campaign.assignments[kw]) {
-        campaign.assignments[kw] = {};
+    // In Supabase speichern
+    try {
+        const { data: newChallenge, error } = await supabase
+            .from('campaign_challenges')
+            .insert({
+                campaign_id: campaign.id,
+                kw: kw,
+                challenge_type: type,
+                ziel: ziel,
+                belohnung: belohnung,
+                completed: false
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        if (!campaign.assignments[kw]) {
+            campaign.assignments[kw] = {};
+        }
+        if (!campaign.assignments[kw].challenges) {
+            campaign.assignments[kw].challenges = [];
+        }
+
+        campaign.assignments[kw].challenges.push({
+            id: newChallenge.id,
+            type: type,
+            ziel: ziel,
+            belohnung: belohnung,
+            completed: false,
+            createdAt: newChallenge.created_at
+        });
+
+        // Reset inputs
+        typeSelect.value = '';
+        zielInput.value = '';
+        belohnungInput.value = '';
+
+        showToast(`${type === 'mitglieder' ? 'Mitglieder' : 'EH'}-Challenge hinzugefügt (${belohnung}€ Belohnung)`, 'success');
+        rerenderKWDetails(campaign);
+
+    } catch (error) {
+        console.error('Fehler beim Speichern der Challenge:', error);
+        showToast('Fehler beim Speichern: ' + error.message, 'error');
     }
-    if (!campaign.assignments[kw].challenges) {
-        campaign.assignments[kw].challenges = [];
-    }
-
-    campaign.assignments[kw].challenges.push({
-        id: Date.now(),
-        type: type,
-        ziel: ziel,
-        belohnung: belohnung,
-        completed: false,
-        createdAt: new Date().toISOString()
-    });
-
-    // Reset inputs
-    typeSelect.value = '';
-    zielInput.value = '';
-    belohnungInput.value = '';
-
-    showToast(`${type === 'mitglieder' ? 'Mitglieder' : 'EH'}-Challenge hinzugefügt (${belohnung}€ Belohnung)`, 'success');
-    rerenderKWDetails(campaign);
 }
 
 // Challenge entfernen
-function removeKWChallenge(kw, idx) {
+async function removeKWChallenge(kw, idx) {
     const campaign = campaigns.find(c => c.id === viewingCampaignId);
     if (!campaign || !campaign.assignments[kw] || !campaign.assignments[kw].challenges) return;
 
-    campaign.assignments[kw].challenges.splice(idx, 1);
-    showToast('Challenge entfernt', 'success');
-    rerenderKWDetails(campaign);
+    const challenge = campaign.assignments[kw].challenges[idx];
+    if (!challenge) return;
+
+    // Aus Supabase löschen
+    try {
+        const { error } = await supabase
+            .from('campaign_challenges')
+            .delete()
+            .eq('id', challenge.id);
+
+        if (error) throw error;
+
+        campaign.assignments[kw].challenges.splice(idx, 1);
+        showToast('Challenge entfernt', 'success');
+        rerenderKWDetails(campaign);
+
+    } catch (error) {
+        console.error('Fehler beim Löschen der Challenge:', error);
+        showToast('Fehler beim Löschen: ' + error.message, 'error');
+    }
 }
 
 // Dienst hinzufügen

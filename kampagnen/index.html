@@ -4894,6 +4894,23 @@ async function saveCampaign() {
     }
 
     try {
+        // Start- und Enddatum aus KW berechnen
+        function getDateFromKW(kw, year) {
+            // ISO 8601: KW1 ist die Woche mit dem ersten Donnerstag des Jahres
+            const jan4 = new Date(year, 0, 4);
+            const dayOfWeek = jan4.getDay() || 7;
+            const firstMonday = new Date(jan4);
+            firstMonday.setDate(jan4.getDate() - dayOfWeek + 1);
+            const targetDate = new Date(firstMonday);
+            targetDate.setDate(firstMonday.getDate() + (kw - 1) * 7);
+            return targetDate.toISOString().split('T')[0];
+        }
+
+        const startDate = getDateFromKW(kwFrom, year);
+        const endDateObj = new Date(getDateFromKW(kwTo, year));
+        endDateObj.setDate(endDateObj.getDate() + 6); // Ende der Woche (Sonntag)
+        const endDate = endDateObj.toISOString().split('T')[0];
+
         // In Supabase speichern
         const { data: newCampaignData, error } = await supabase
             .from('campaigns')
@@ -4902,6 +4919,8 @@ async function saveCampaign() {
                 year: year,
                 kw_from: kwFrom,
                 kw_to: kwTo,
+                start_date: startDate,
+                end_date: endDate,
                 status: 'active'
             })
             .select()

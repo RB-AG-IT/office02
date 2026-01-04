@@ -926,7 +926,7 @@ input[type="radio"][name="type"]:checked::after {
         // ================================================================
         const SUPABASE_URL = 'https://lgztglycqtiwcmiydxnm.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnenRnbHljcXRpd2NtaXlkeG5tIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzgwNzYxNSwiZXhwIjoyMDc5MzgzNjE1fQ.54kSk9ZSUdQt6LKYWkblqgR6Sjev80W80qkNHYEbPgk';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // ================================================================
         // URL PARAMETER HANDLING
@@ -963,7 +963,7 @@ input[type="radio"][name="type"]:checked::after {
 
             try {
                 // Assignment für aktuelle KW laden (Teamchef, Quality)
-                const { data: assignment } = await supabase
+                const { data: assignment } = await supabaseClient
                     .from('campaign_assignments')
                     .select('teamchef_id, quality_manager_id')
                     .eq('campaign_id', formContext.campaign_id)
@@ -976,7 +976,7 @@ input[type="radio"][name="type"]:checked::after {
                 }
 
                 // Campaign Area laden (für Customer)
-                const { data: area } = await supabase
+                const { data: area } = await supabaseClient
                     .from('campaign_areas')
                     .select('*, campaigns(customer_id)')
                     .eq('id', formContext.campaign_area_id)
@@ -2004,7 +2004,7 @@ const streetResults = data.results.filter(result => {
 
             try {
                 // In Supabase speichern
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('records')
                     .insert(record)
                     .select()

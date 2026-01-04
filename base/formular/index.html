@@ -1022,43 +1022,67 @@ input[type="radio"][name="type"]:checked::after {
                     formContext.quality_id = assignment.quality_manager_id;
                 }
 
-                // Campaign Area + Kunde laden
-                const { data: area } = await supabaseClient
+                // Campaign Area laden
+                const { data: area, error: areaError } = await supabaseClient
                     .from('campaign_areas')
-                    .select('*, campaigns(customer_id, customers(name, street, house_number, postal_code, city))')
+                    .select('*')
                     .eq('id', formContext.campaign_area_id)
                     .single();
 
-                if (area) {
-                    console.log('Campaign Area loaded:', area);
-                    console.log('Area name:', area.name);
-                    formContext.customer_id = area.campaigns?.customer_id;
+                console.log('Campaign Area loaded:', area, areaError);
 
-                    // Kundendaten im Header anzeigen
-                    const customer = area.campaigns?.customers;
+                if (area) {
                     const verbandName = document.getElementById('verbandName');
                     const verbandAdresse = document.getElementById('verbandAdresse');
                     const footerKundeName = document.getElementById('footerKundeName');
 
-                    // Name: Werbegebiet-Name hat Priorität, sonst Kundenname
-                    const displayName = area.name || customer?.name || 'DRK Kreisverband';
-
-                    if (verbandName) {
-                        verbandName.textContent = displayName;
-                    }
-                    if (footerKundeName) {
-                        footerKundeName.textContent = displayName;
+                    // Werbegebiet-Name anzeigen
+                    if (area.name) {
+                        if (verbandName) verbandName.textContent = area.name;
+                        if (footerKundeName) footerKundeName.textContent = area.name;
                     }
 
-                    // Adresse aus Kunde
-                    if (verbandAdresse && customer) {
-                        const adresse = [
-                            customer.street,
-                            customer.house_number ? customer.house_number : '',
-                            customer.postal_code ? `, ${customer.postal_code}` : '',
-                            customer.city || ''
-                        ].filter(Boolean).join(' ').replace(' ,', ',');
-                        verbandAdresse.textContent = adresse || '';
+                    // Kampagne laden für Customer-ID
+                    if (area.campaign_id) {
+                        const { data: campaign } = await supabaseClient
+                            .from('campaigns')
+                            .select('customer_id')
+                            .eq('id', area.campaign_id)
+                            .single();
+
+                        console.log('Campaign loaded:', campaign);
+
+                        if (campaign?.customer_id) {
+                            formContext.customer_id = campaign.customer_id;
+
+                            // Kunde laden für Adresse
+                            const { data: customer } = await supabaseClient
+                                .from('customers')
+                                .select('name, street, house_number, postal_code, city')
+                                .eq('id', campaign.customer_id)
+                                .single();
+
+                            console.log('Customer loaded:', customer);
+
+                            if (customer) {
+                                // Falls kein Werbegebiet-Name, nutze Kundenname
+                                if (!area.name) {
+                                    if (verbandName) verbandName.textContent = customer.name || 'DRK Kreisverband';
+                                    if (footerKundeName) footerKundeName.textContent = customer.name || 'DRK Kreisverband';
+                                }
+
+                                // Adresse anzeigen
+                                if (verbandAdresse) {
+                                    const adresse = [
+                                        customer.street,
+                                        customer.house_number || '',
+                                        customer.postal_code ? `, ${customer.postal_code}` : '',
+                                        customer.city || ''
+                                    ].filter(Boolean).join(' ').replace(' ,', ',');
+                                    verbandAdresse.textContent = adresse || '';
+                                }
+                            }
+                        }
                     }
                 }
 

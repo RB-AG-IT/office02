@@ -2354,6 +2354,7 @@ function updateAddedWgList() {
 // Formular-Link für Werbegebiet generieren
 function getFormularLink(wgId) {
     const currentUser = window.parent?.currentUser;
+    console.log('getFormularLink - currentUser:', currentUser);
     const botschafterId = currentUser?.id || '';
     const campaignId = viewingCampaignId || '';
 

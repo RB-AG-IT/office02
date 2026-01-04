@@ -70,7 +70,7 @@
                         <span class="icon icon--person"></span>
                         <span class="text-klein--fett">Profil</span>
                     </div>
-                    <div class="dropdown-item" id="authDropdownItem" onclick="currentUser ? handleLogout() : openLoginModal()">
+                    <div class="dropdown-item" id="authDropdownItem" onclick="window.currentUser ? handleLogout() : openLoginModal()">
                         <span class="icon icon--schloss" id="authDropdownIcon"></span>
                         <span id="authDropdownText" class="text-klein--fett">Anmelden</span>
                     </div>
@@ -302,8 +302,8 @@
         // Supabase Client
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Current user state
-        let currentUser = null;
+        // Current user state (global für iframe-Zugriff)
+        window.currentUser = null;
 
         // ================================================================
         // AUTH FUNCTIONS
@@ -355,7 +355,7 @@
                 if (error) throw error;
 
                 // Success!
-                currentUser = data.user;
+                window.currentUser = data.user;
                 await updateAuthUI();
                 closeLoginModal();
 
@@ -490,7 +490,7 @@
                 const { error } = await supabase.auth.signOut();
                 if (error) throw error;
 
-                currentUser = null;
+                window.currentUser = null;
                 await updateAuthUI();
 
                 // Redirect to dashboard
@@ -509,33 +509,33 @@
             const profileItem = document.getElementById('profileDropdownItem');
 
             if (authText) {
-                authText.textContent = currentUser ? 'Abmelden' : 'Anmelden';
+                authText.textContent = window.currentUser ? 'Abmelden' : 'Anmelden';
             }
 
             // Icon wechseln: schloss (anmelden) / schloss-offen (abmelden)
             if (authIcon) {
-                authIcon.className = currentUser ? 'icon icon--schloss-offen' : 'icon icon--schloss';
+                authIcon.className = window.currentUser ? 'icon icon--schloss-offen' : 'icon icon--schloss';
             }
 
             // Profil-Link nur anzeigen wenn eingeloggt
             if (profileItem) {
-                profileItem.style.display = currentUser ? 'flex' : 'none';
+                profileItem.style.display = window.currentUser ? 'flex' : 'none';
             }
         }
 
         async function openMyProfile() {
-            if (!currentUser) return;
+            if (!window.currentUser) return;
 
             // User-Typ aus DB holen
             const { data: userData } = await supabase
                 .from('users')
                 .select('role')
-                .eq('id', currentUser.id)
+                .eq('id', window.currentUser.id)
                 .single();
 
             const profilePage = userData?.role === 'kunde'
-                ? `benutzer/BENUTZER-KUNDEN-PROFIL.html?id=${currentUser.id}`
-                : `benutzer/BENUTZER-BOTSCHAFTER-PROFIL.html?id=${currentUser.id}`;
+                ? `benutzer/BENUTZER-KUNDEN-PROFIL.html?id=${window.currentUser.id}`
+                : `benutzer/BENUTZER-BOTSCHAFTER-PROFIL.html?id=${window.currentUser.id}`;
 
             // Erst zur Benutzer-Seite navigieren, dann iframe URL setzen
             loadPage('users');
@@ -646,9 +646,9 @@
             const { data: { session } } = await supabase.auth.getSession();
 
             if (session) {
-                currentUser = session.user;
+                window.currentUser = session.user;
             } else {
-                currentUser = null;
+                window.currentUser = null;
             }
 
             await updateAuthUI();
@@ -664,12 +664,12 @@
             if (event === 'SIGNED_IN') {
                 // Nur updaten wenn sich der User wirklich geändert hat
                 const newUserId = session?.user?.id;
-                if (currentUser?.id !== newUserId) {
-                    currentUser = session.user;
+                if (window.currentUser?.id !== newUserId) {
+                    window.currentUser = session.user;
                     updateAuthUI();
                 }
             } else if (event === 'SIGNED_OUT') {
-                currentUser = null;
+                window.currentUser = null;
                 updateAuthUI();
             }
         });

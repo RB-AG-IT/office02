@@ -994,11 +994,7 @@
                             <label class="eingabefeld-beschriftung-oben">Kunde auswählen</label>
                             <select class="eingabefeld" id="wgKundeSelect" onchange="onKundeSelectChange()">
                                 <option value="">Bitte wählen...</option>
-                                <option value="drk">DRK - Deutsches Rotes Kreuz</option>
-                                <option value="unicef">UNICEF Deutschland</option>
-                                <option value="wwf">WWF Deutschland</option>
-                                <option value="greenpeace">Greenpeace e.V.</option>
-                                <option value="aerzte">Ärzte ohne Grenzen</option>
+                                <!-- Wird dynamisch aus Supabase geladen -->
                             </select>
                         </div>
 
@@ -1428,7 +1424,8 @@ async function loadAllData() {
     // Parallel laden
     const [loadedEmployees, loadedCampaigns] = await Promise.all([
         loadEmployeesFromSupabase(),
-        loadCampaignsFromSupabase()
+        loadCampaignsFromSupabase(),
+        loadKundenForSelect()
     ]);
 
     employees = loadedEmployees;
@@ -2099,6 +2096,9 @@ async function saveCampaignSettings() {
 
 // ===================== WERBEGEBIETE & PROVISIONEN TAB =====================
 
+// Kunden aus Supabase
+let kundenListe = [];
+
 // Werbegebiete pro Kunde - werden aus Supabase geladen (customer_areas)
 const kundenWerbegebiete = {};
 
@@ -2112,12 +2112,90 @@ let activeWgConfig = null; // Aktuell ausgewähltes WG zur Konfiguration
 let wgSonderposten = []; // Sonderposten für das aktuelle WG
 let wgEditMode = false; // Edit-Modus für WG Konfiguration
 
+// Kunden aus Supabase laden und Select befüllen
+async function loadKundenForSelect() {
+    try {
+        const { data: customers, error } = await supabase
+            .from('customers')
+            .select('id, name, organisation, name_prefix, name_suffix')
+            .order('name', { ascending: true });
+
+        if (error) throw error;
+
+        kundenListe = customers || [];
+
+        // Select befüllen
+        const select = document.getElementById('wgKundeSelect');
+        if (!select) return;
+
+        // Bestehende Optionen (außer Placeholder) entfernen
+        while (select.options.length > 1) {
+            select.remove(1);
+        }
+
+        // Kunden hinzufügen
+        kundenListe.forEach(kunde => {
+            const option = document.createElement('option');
+            option.value = kunde.id;
+            // Name zusammensetzen
+            const fullName = [kunde.organisation, kunde.name_prefix, kunde.name, kunde.name_suffix]
+                .filter(Boolean)
+                .join(' ')
+                .trim();
+            option.textContent = fullName || kunde.name || 'Unbenannt';
+            select.appendChild(option);
+        });
+
+        console.log(`${kundenListe.length} Kunden geladen`);
+
+    } catch (error) {
+        console.error('Fehler beim Laden der Kunden:', error);
+    }
+}
+
+// Werbegebiete für Kunde aus Supabase laden
+async function loadWerbegebieteForKunde(kundeId) {
+    if (kundenWerbegebiete[kundeId]) {
+        // Bereits geladen
+        return kundenWerbegebiete[kundeId];
+    }
+
+    try {
+        const { data: areas, error } = await supabase
+            .from('customer_areas')
+            .select('*')
+            .eq('customer_id', kundeId)
+            .order('name', { ascending: true });
+
+        if (error) throw error;
+
+        // In Cache speichern
+        kundenWerbegebiete[kundeId] = (areas || []).map(area => ({
+            id: area.id,
+            name: area.name,
+            plz: area.plz,
+            einwohner: area.einwohner || 0
+        }));
+
+        console.log(`${kundenWerbegebiete[kundeId].length} Werbegebiete für Kunde ${kundeId} geladen`);
+
+        return kundenWerbegebiete[kundeId];
+
+    } catch (error) {
+        console.error('Fehler beim Laden der Werbegebiete:', error);
+        return [];
+    }
+}
+
 // Kunde auswählen
-function onKundeSelectChange() {
+async function onKundeSelectChange() {
     const select = document.getElementById('wgKundeSelect');
     selectedWgKunde = select.value;
 
     if (selectedWgKunde) {
+        // Werbegebiete laden
+        await loadWerbegebieteForKunde(selectedWgKunde);
+
         document.getElementById('wgListSection').style.display = 'block';
         renderAvailableWerbegebiete();
         updateAddedWgList();
@@ -2218,15 +2296,15 @@ function addWgToCampaign(wgId) {
 }
 
 // Kunde Name holen
-function getKundeName(key) {
-    const names = {
-        'drk': 'DRK - Deutsches Rotes Kreuz',
-        'unicef': 'UNICEF Deutschland',
-        'wwf': 'WWF Deutschland',
-        'greenpeace': 'Greenpeace e.V.',
-        'aerzte': 'Ärzte ohne Grenzen'
-    };
-    return names[key] || key;
+function getKundeName(kundeId) {
+    const kunde = kundenListe.find(k => k.id === kundeId);
+    if (!kunde) return kundeId;
+
+    const fullName = [kunde.organisation, kunde.name_prefix, kunde.name, kunde.name_suffix]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+    return fullName || kunde.name || 'Unbenannt';
 }
 
 // Hinzugefügte WG Liste updaten

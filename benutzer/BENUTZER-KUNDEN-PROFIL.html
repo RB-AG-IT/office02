@@ -350,8 +350,8 @@
 
         // Supabase Client (von parent Shell oder eigener)
         let supabase;
-        if (window.parent && window.parent.supabase) {
-            supabase = window.parent.supabase;
+        if (window.parent && window.parent.supabaseClient) {
+            supabase = window.parent.supabaseClient;
         } else {
             supabase = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }

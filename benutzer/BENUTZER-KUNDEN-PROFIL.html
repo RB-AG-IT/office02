@@ -1028,6 +1028,7 @@
 
             const preview = `${org} ${typPrefix} ${vereinsname}${rechtsform ? ' ' + rechtsform : ''}`;
             document.getElementById('areaNamePreview').textContent = preview;
+            document.getElementById('areaFullNamePreview').textContent = preview;
         }
 
         function openAddAreaModal(type = 'kreisverband') {
@@ -1185,7 +1186,12 @@
 
             // Vereinstyp aus currentAreaType ableiten
             const vereinstyp = currentAreaType === 'ortsverein' ? 'OV' : 'KV';
-            const name = vereinsname;
+
+            // Vollständigen Namen zusammensetzen (z.B. "DRK KV Ludwigshafen e.V.")
+            const org = document.getElementById('organisation').value || 'DRK';
+            const typPrefix = vereinstyp === 'OV' ? 'OV' : 'KV';
+            const rechtsform = document.getElementById('nameSuffix').value || '';
+            const name = `${org} ${typPrefix} ${vereinsname}${rechtsform ? ' ' + rechtsform : ''}`;
 
             const kvZuordnungSelect = document.getElementById('areaKvZuordnung');
             const kvZuordnungValue = kvZuordnungSelect ? kvZuordnungSelect.value : '';
@@ -1428,11 +1434,18 @@
 
             try {
                 // Kundendaten sammeln
+                const org = document.getElementById('organisation').value;
+                const prefix = document.getElementById('namePrefix').value;
+                const name = document.getElementById('name').value.trim();
+                const suffix = document.getElementById('nameSuffix').value;
+                const fullName = `${org} ${prefix} ${name}${suffix ? ' ' + suffix : ''}`;
+
                 const customerData = {
-                    organisation: document.getElementById('organisation').value,
-                    name_prefix: document.getElementById('namePrefix').value,
-                    name: document.getElementById('name').value.trim(),
-                    name_suffix: document.getElementById('nameSuffix').value,
+                    organisation: org,
+                    name_prefix: prefix,
+                    name: name,
+                    name_suffix: suffix,
+                    full_name: fullName,
                     type: document.getElementById('type').value,
                     kd_id: document.getElementById('kdId').value.trim(),
                     einwohner: parseInt(document.getElementById('customerEinwohner').value) || null,
@@ -1746,7 +1759,7 @@
                         <div class="eingabefeld-gruppe eingabefeld-gruppe--flex-2">
                             <label class="eingabefeld-beschriftung-oben">Vereinsname *</label>
                             <input type="text" class="eingabefeld" id="areaVereinsname" placeholder="z.B. Ludwigshafen" oninput="updateAreaNamePreview()">
-                            <span class="eingabefeld-beschriftung-unten"></span>
+                            <span class="eingabefeld-beschriftung-unten" id="areaFullNamePreview">DRK KV ... e.V.</span>
                         </div>
                         <div class="eingabefeld-gruppe eingabefeld-gruppe--flex-0-5">
                             <label class="eingabefeld-beschriftung-oben">Einwohner</label>

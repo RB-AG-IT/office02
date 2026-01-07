@@ -1008,13 +1008,24 @@
                             </div>
                         </div>
 
-                        <!-- Zur Kampagne hinzugefügte WGs -->
+                        <!-- Zur Kampagne hinzugefügte WGs (für ausgewählten Kunden) -->
                         <div class="unterabschnitt--card unterabschnitt--card--no-border" id="wgAddedSection" style="display: none;">
                             <div class="eingabefeld-gruppe eingabefeld-gruppe--mit-aktion">
-                                <label class="eingabefeld-beschriftung-oben">In Kampagne</label>
+                                <label class="eingabefeld-beschriftung-oben">In Kampagne (Kunde)</label>
                                 <span class="badge-zaehler" id="wgAddedCount">0</span>
                             </div>
                             <div id="wgAddedList">
+                                <!-- Wird dynamisch befüllt mit anzeigenfeld--card -->
+                            </div>
+                        </div>
+
+                        <!-- Alle Werbegebiete in der Kampagne -->
+                        <div class="unterabschnitt--card unterabschnitt--card--no-border" id="wgAllSection" style="display: none;">
+                            <div class="eingabefeld-gruppe eingabefeld-gruppe--mit-aktion">
+                                <label class="eingabefeld-beschriftung-oben">Alle Werbegebiete</label>
+                                <span class="badge-zaehler" id="wgAllCount">0</span>
+                            </div>
+                            <div id="wgAllList">
                                 <!-- Wird dynamisch befüllt mit anzeigenfeld--card -->
                             </div>
                         </div>
@@ -1295,10 +1306,10 @@ async function loadCampaignsFromSupabase() {
 
         // Für jede Kampagne: Areas, Assignments und Challenges laden
         const campaignsWithDetails = await Promise.all(campaignsData.map(async (campaign) => {
-            // Campaign Areas laden
+            // Campaign Areas laden (mit customer_areas JOIN für customer_id)
             const { data: areasData } = await supabase
                 .from('campaign_areas')
-                .select('*')
+                .select('*, customer_areas(customer_id)')
                 .eq('campaign_id', campaign.id);
 
             // Assignments laden
@@ -1345,10 +1356,14 @@ async function loadCampaignsFromSupabase() {
             // Einsatzgebiete in das erwartete Format konvertieren
             const einsatzgebiete = (areasData || []).map(area => ({
                 id: area.id,
+                customer_area_id: area.customer_area_id,
+                kunde: area.customer_areas?.customer_id || null,
                 name: area.name,
                 plz: area.plz,
                 einwohner: area.einwohner || 0,
                 rahmenvertrag: area.rahmenvertrag_name,
+                avv: area.avv_url,
+                gruppenbild: area.gruppenbild_url,
                 // Erweiterte Felder
                 provision_sondierung: area.provision_sondierung,
                 provision_regular: area.provision_regular,
@@ -1876,7 +1891,136 @@ function viewCampaign(id) {
     // Einsatzgebiete
     renderViewEinsatzgebiete(campaign);
 
+    // Werbegebiete für Provision-Tab initialisieren
+    initCampaignWerbegebiete(campaign);
+
     openModalById('campaignViewModal');
+}
+
+// Werbegebiete aus einsatzgebiete für den Provision-Tab initialisieren
+function initCampaignWerbegebiete(campaign) {
+    const einsatzgebiete = campaign.einsatzgebiete || [];
+
+    // Reset
+    campaignWerbegebiete = [];
+    activeWgConfig = null;
+    selectedWgKunde = null;
+
+    // Konfiguration-Panel zurücksetzen
+    document.getElementById('wgConfigPlaceholder').style.display = 'flex';
+    document.getElementById('wgConfigPanel').style.display = 'none';
+
+    // Kunden-Dropdown zurücksetzen
+    const kundeSelect = document.getElementById('wgKundeSelect');
+    if (kundeSelect) kundeSelect.value = '';
+    document.getElementById('wgListSection').style.display = 'none';
+    document.getElementById('wgAddedSection').style.display = 'none';
+
+    // Default KWs für die Kampagne
+    const defaultKws = [];
+    for (let kw = campaign.kwFrom; kw <= campaign.kwTo; kw++) {
+        defaultKws.push(kw);
+    }
+
+    // Einsatzgebiete in campaignWerbegebiete Format konvertieren
+    einsatzgebiete.forEach(eg => {
+        // Sondierung aus DB oder Defaults
+        const sondierung = eg.provision_sondierung || { j1: 80, j2: 50, j3: 30, j4: 0, j5: 0, limit: 100, limitType: 'mg' };
+
+        // Regular aus DB oder Defaults
+        const regular = eg.provision_regular || { j1: 60, j2: 40, j3: 20, j4: 0, j5: 0 };
+
+        // Qualitätsbonus aus DB oder Defaults
+        const qualitaetsbonus = eg.qualitaetsbonus || {
+            aktiv: true,
+            regeln: [
+                { storno: 15, pp: 3 },
+                { storno: 12, pp: 3 },
+                { storno: 10, pp: 3 },
+                { storno: 8, pp: 1 }
+            ]
+        };
+
+        // KWs aus DB oder alle KWs der Kampagne
+        const kws = eg.active_kws && eg.active_kws.length > 0 ? eg.active_kws : [...defaultKws];
+
+        const wgConfig = {
+            id: eg.id,
+            customer_area_id: eg.customer_area_id,
+            name: eg.name,
+            plz: eg.plz,
+            einwohner: eg.einwohner || 0,
+            kunde: eg.kunde,
+            kundeName: eg.kunde ? getKundeName(eg.kunde) : '',
+            kws: kws,
+            sondierung: sondierung,
+            regular: regular,
+            qualitaetsbonus: qualitaetsbonus,
+            teilverguetung: eg.teilverguetung || false,
+            teilvProzent: eg.teilv_prozent || 50,
+            stornopuffer: eg.stornopuffer || 10,
+            endabrWochen: eg.endabr_wochen || 8,
+            kosten: eg.kosten || {
+                kfz: { aktiv: false, art: 'aufwand', betrag: '', zeitraum: 'woche' },
+                kleidung: { aktiv: false, art: 'aufwand', betrag: '', pro: 'person', zeitraum: 'woche' },
+                ausweise: { aktiv: false, art: 'aufwand', betrag: '', pro: 'person', zeitraum: 'woche' }
+            },
+            gruppenbild: eg.gruppenbild || null,
+            sonderposten: eg.sonderposten || [],
+            rahmenvertrag: eg.rahmenvertrag || '',
+            avv: eg.avv || ''
+        };
+
+        campaignWerbegebiete.push(wgConfig);
+    });
+
+    // Alle Werbegebiete anzeigen
+    renderAllCampaignWerbegebiete();
+
+    console.log(`${campaignWerbegebiete.length} Werbegebiete für Kampagne initialisiert`);
+}
+
+// Alle Werbegebiete der Kampagne anzeigen (unabhängig vom Kunden)
+function renderAllCampaignWerbegebiete() {
+    const section = document.getElementById('wgAllSection');
+    const container = document.getElementById('wgAllList');
+    const countBadge = document.getElementById('wgAllCount');
+
+    if (campaignWerbegebiete.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = 'block';
+    countBadge.textContent = campaignWerbegebiete.length;
+
+    container.innerHTML = campaignWerbegebiete.map(wg => {
+        const wgInitials = getInitials(wg.name);
+        const isActive = activeWgConfig === wg.id;
+        const kundeName = wg.kundeName || 'Unbekannt';
+
+        return `
+            <div class="anzeigenfeld anzeigenfeld--card ${isActive ? 'active' : ''}">
+                <div class="anzeigenfeld--card-main" onclick="openWgConfig('${wg.id}')">
+                    <div class="user-badge user-badge--werbegebiet user-badge--small">
+                        <div class="user-badge__avatar">${wgInitials}</div>
+                        <div class="user-badge__info">
+                            <span class="user-badge__name">${wg.name}</span>
+                            <span class="user-badge__type">${kundeName}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="anzeigenfeld--card-actions">
+                    <button class="btn btn-sm btn--hover-blau" onclick="event.stopPropagation(); openFormularLink('${wg.id}')" title="Formular öffnen">
+                        <span class="icon icon--dokument"></span>
+                    </button>
+                    <button class="btn btn-sm btn--hover-blau" onclick="event.stopPropagation(); copyFormularLink('${wg.id}')" title="Link kopieren">
+                        <span class="icon icon--clipboard"></span>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 // Settings Modal öffnen
@@ -2343,37 +2487,39 @@ function updateAddedWgList() {
 
     if (kundenWgs.length === 0) {
         section.style.display = 'none';
-        return;
-    }
+    } else {
+        section.style.display = 'block';
+        countBadge.textContent = kundenWgs.length;
 
-    section.style.display = 'block';
-    countBadge.textContent = kundenWgs.length;
-
-    container.innerHTML = kundenWgs.map(wg => {
-        const wgInitials = getInitials(wg.name);
-        const isActive = activeWgConfig === wg.id;
-        return `
-            <div class="anzeigenfeld anzeigenfeld--card ${isActive ? 'active' : ''}">
-                <div class="anzeigenfeld--card-main" onclick="openWgConfig('${wg.id}')">
-                    <div class="user-badge user-badge--werbegebiet user-badge--small">
-                        <div class="user-badge__avatar">${wgInitials}</div>
-                        <div class="user-badge__info">
-                            <span class="user-badge__name">${wg.name}</span>
-                            <span class="user-badge__type">Werbegebiet</span>
+        container.innerHTML = kundenWgs.map(wg => {
+            const wgInitials = getInitials(wg.name);
+            const isActive = activeWgConfig === wg.id;
+            return `
+                <div class="anzeigenfeld anzeigenfeld--card ${isActive ? 'active' : ''}">
+                    <div class="anzeigenfeld--card-main" onclick="openWgConfig('${wg.id}')">
+                        <div class="user-badge user-badge--werbegebiet user-badge--small">
+                            <div class="user-badge__avatar">${wgInitials}</div>
+                            <div class="user-badge__info">
+                                <span class="user-badge__name">${wg.name}</span>
+                                <span class="user-badge__type">Werbegebiet</span>
+                            </div>
                         </div>
                     </div>
+                    <div class="anzeigenfeld--card-actions">
+                        <button class="btn btn-sm btn--hover-blau" onclick="event.stopPropagation(); openFormularLink('${wg.id}')" title="Formular öffnen">
+                            <span class="icon icon--dokument"></span>
+                        </button>
+                        <button class="btn btn-sm btn--hover-blau" onclick="event.stopPropagation(); copyFormularLink('${wg.id}')" title="Link kopieren">
+                            <span class="icon icon--clipboard"></span>
+                        </button>
+                    </div>
                 </div>
-                <div class="anzeigenfeld--card-actions">
-                    <button class="btn btn-sm btn--hover-blau" onclick="event.stopPropagation(); openFormularLink('${wg.id}')" title="Formular öffnen">
-                        <span class="icon icon--dokument"></span>
-                    </button>
-                    <button class="btn btn-sm btn--hover-blau" onclick="event.stopPropagation(); copyFormularLink('${wg.id}')" title="Link kopieren">
-                        <span class="icon icon--clipboard"></span>
-                    </button>
-                </div>
-            </div>
-        `;
-    }).join('');
+            `;
+        }).join('');
+    }
+
+    // Auch die Gesamtliste aktualisieren
+    renderAllCampaignWerbegebiete();
 }
 
 // Formular-Link für Werbegebiet generieren

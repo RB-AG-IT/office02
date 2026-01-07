@@ -1428,11 +1428,18 @@
 
             try {
                 // Kundendaten sammeln
+                const org = document.getElementById('organisation').value;
+                const prefix = document.getElementById('namePrefix').value;
+                const name = document.getElementById('name').value.trim();
+                const suffix = document.getElementById('nameSuffix').value;
+                const fullName = `${org} ${prefix} ${name}${suffix ? ' ' + suffix : ''}`;
+
                 const customerData = {
-                    organisation: document.getElementById('organisation').value,
-                    name_prefix: document.getElementById('namePrefix').value,
-                    name: document.getElementById('name').value.trim(),
-                    name_suffix: document.getElementById('nameSuffix').value,
+                    organisation: org,
+                    name_prefix: prefix,
+                    name: name,
+                    name_suffix: suffix,
+                    full_name: fullName,
                     type: document.getElementById('type').value,
                     kd_id: document.getElementById('kdId').value.trim(),
                     einwohner: parseInt(document.getElementById('customerEinwohner').value) || null,

@@ -585,7 +585,7 @@
             // Records laden für Statistiken
             const { data: records, error: recordsError } = await supabase
                 .from('records')
-                .select('campaign_id, area_id, yearly_amount, record_status');
+                .select('campaign_id, campaign_area_id, yearly_amount, record_status');
 
             if (recordsError) {
                 console.error('Fehler beim Laden der Records:', recordsError);
@@ -611,16 +611,16 @@
             // Statistiken pro Werbegebiet berechnen
             const werbegebietStatsMap = {};
             records.forEach(r => {
-                if (!r.area_id) return;
-                if (!werbegebietStatsMap[r.area_id]) {
-                    werbegebietStatsMap[r.area_id] = { total: 0, aktiv: 0, storno: 0, nettoJE: 0 };
+                if (!r.campaign_area_id) return;
+                if (!werbegebietStatsMap[r.campaign_area_id]) {
+                    werbegebietStatsMap[r.campaign_area_id] = { total: 0, aktiv: 0, storno: 0, nettoJE: 0 };
                 }
-                werbegebietStatsMap[r.area_id].total++;
+                werbegebietStatsMap[r.campaign_area_id].total++;
                 if (r.record_status === 'aktiv') {
-                    werbegebietStatsMap[r.area_id].aktiv++;
-                    werbegebietStatsMap[r.area_id].nettoJE += (r.yearly_amount || 0);
+                    werbegebietStatsMap[r.campaign_area_id].aktiv++;
+                    werbegebietStatsMap[r.campaign_area_id].nettoJE += (r.yearly_amount || 0);
                 } else if (r.record_status === 'storno') {
-                    werbegebietStatsMap[r.area_id].storno++;
+                    werbegebietStatsMap[r.campaign_area_id].storno++;
                 }
             });
 

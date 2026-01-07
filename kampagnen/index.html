@@ -1968,7 +1968,9 @@ function initCampaignWerbegebiete(campaign) {
             gruppenbild: eg.gruppenbild || null,
             sonderposten: eg.sonderposten || [],
             rahmenvertrag: eg.rahmenvertrag || '',
-            avv: eg.avv || ''
+            avv: eg.avv || '',
+            erhohungen: eg.erhohungen !== false,
+            paymentModalities: eg.paymentModalities || ['monthly', 'quarterly', 'biannual', 'annual']
         };
 
         campaignWerbegebiete.push(wgConfig);
@@ -2673,6 +2675,29 @@ function openWgConfig(wgId) {
     // Gruppenbild
     loadGruppenbild(wg.gruppenbild);
 
+    // Erhöhungen
+    document.getElementById('wgErhohungen').checked = wg.erhohungen !== false;
+
+    // Zahlungsmodalitäten
+    const allowedModalities = wg.paymentModalities || ['monthly', 'quarterly', 'biannual', 'annual'];
+    const zahlungsSection = document.getElementById('zahlungsSection');
+    if (zahlungsSection) {
+        zahlungsSection.querySelectorAll('.btn-toggle-group .btn').forEach(btn => {
+            const mod = btn.textContent.trim();
+            const labelToValue = {
+                'Monatlich': 'monthly',
+                'Quartal': 'quarterly',
+                'Halbjährlich': 'biannual',
+                'Jährlich': 'annual'
+            };
+            const value = labelToValue[mod];
+            const isActive = allowedModalities.includes(value);
+            btn.classList.toggle('active', isActive);
+            const checkbox = btn.querySelector('input');
+            if (checkbox) checkbox.checked = isActive;
+        });
+    }
+
     // Sonderposten
     renderSonderposten();
 
@@ -3134,6 +3159,9 @@ async function saveWgConfig() {
     }
     wg.paymentModalities = activeModalities.length > 0 ? activeModalities : ['monthly', 'quarterly', 'biannual', 'annual'];
 
+    // Erhöhungen
+    wg.erhohungen = document.getElementById('wgErhohungen').checked;
+
     // In Supabase speichern
     try {
         const { error } = await supabase
@@ -3150,7 +3178,8 @@ async function saveWgConfig() {
                 sonderposten: wg.sonderposten,
                 rahmenvertrag_name: wg.rahmenvertrag,
                 avv_url: wg.avv,
-                payment_modalities: wg.paymentModalities
+                payment_modalities: wg.paymentModalities,
+                erhohungen_enabled: wg.erhohungen
             })
             .eq('id', wg.id);
 

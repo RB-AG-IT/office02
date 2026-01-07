@@ -1103,12 +1103,64 @@ input[type="radio"][name="type"]:checked::after {
                             datenschutzLink.style.textDecoration = 'none';
                         }
                     }
+
+                    // Formular-Einstellungen anwenden (ERH + Zahlungsmodalitäten)
+                    applyFormSettings(area);
                 }
 
                 console.log('Form context loaded:', formContext);
 
             } catch (error) {
                 console.error('Fehler beim Laden des Kontexts:', error);
+            }
+        }
+
+        // Formular-Einstellungen basierend auf campaign_area anwenden
+        function applyFormSettings(area) {
+            // ERH deaktivieren wenn nicht erlaubt
+            const erhRadio = document.querySelector('input[name="type"][value="ERH"]');
+            const erhLabel = erhRadio?.closest('label');
+
+            if (area.erhohungen_enabled === false) {
+                if (erhRadio) {
+                    erhRadio.disabled = true;
+                }
+                if (erhLabel) {
+                    erhLabel.style.opacity = '0.4';
+                    erhLabel.style.pointerEvents = 'none';
+                    erhLabel.style.cursor = 'not-allowed';
+                    erhLabel.title = 'Erhöhungen sind für dieses Einsatzgebiet deaktiviert';
+                }
+            }
+
+            // Zahlungsmodalitäten filtern
+            const allowedModalities = area.payment_modalities || ['monthly', 'quarterly', 'biannual', 'annual'];
+            const modalityMapping = {
+                'monthly': 'monthly',
+                'quarterly': 'quarterly',
+                'biannual': 'halfyearly',  // DB: biannual, Formular: halfyearly
+                'annual': 'yearly'          // DB: annual, Formular: yearly
+            };
+
+            // Alle interval-buttons durchgehen
+            document.querySelectorAll('.interval-btn').forEach(btn => {
+                const interval = btn.dataset.interval;
+                // Prüfen ob diese Modalität erlaubt ist
+                const isAllowed = allowedModalities.some(mod => modalityMapping[mod] === interval);
+
+                if (!isAllowed) {
+                    btn.style.display = 'none';
+                }
+            });
+
+            // Falls aktive Modalität nicht mehr erlaubt ist, erste erlaubte auswählen
+            const activeBtn = document.querySelector('.interval-btn.active');
+            if (activeBtn && activeBtn.style.display === 'none') {
+                const firstVisibleBtn = document.querySelector('.interval-btn:not([style*="display: none"])');
+                if (firstVisibleBtn) {
+                    activeBtn.classList.remove('active');
+                    firstVisibleBtn.classList.add('active');
+                }
             }
         }
 

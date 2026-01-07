@@ -1374,7 +1374,10 @@ async function loadCampaignsFromSupabase() {
                 endabr_wochen: area.endabr_wochen,
                 kosten: area.kosten,
                 sonderposten: area.sonderposten,
-                active_kws: area.active_kws
+                active_kws: area.active_kws,
+                // Formular-Einstellungen
+                erhohungen: area.erhohungen_enabled !== false, // Default true
+                paymentModalities: area.payment_modalities || ['monthly', 'quarterly', 'biannual', 'annual']
             }));
 
             return {
@@ -4971,7 +4974,7 @@ function renderViewEinsatzgebiete(campaign) {
                     <div class="einsatzgebiet-options">
                         <div class="einsatzgebiet-option-group">
                             <span class="einsatzgebiet-option-label">Erhöhungen</span>
-                            <label class="toggle-switch" onclick="toggleErhohungen(${index})">
+                            <label class="toggle-switch" onclick="toggleErhohungen(${index}, '${eg.id}')">
                                 <input type="checkbox" id="erhohungen-${index}" ${eg.erhohungen ? 'checked' : ''}>
                                 <span class="toggle-slider"></span>
                                 <span class="toggle-label">${eg.erhohungen ? 'Ja' : 'Nein'}</span>
@@ -4981,7 +4984,7 @@ function renderViewEinsatzgebiete(campaign) {
                             <span class="einsatzgebiet-option-label">Zahlungsmodalitäten</span>
                             <div class="btn-toggle-group">
                                 ${allModalities.map(mod => `
-                                    <label class="btn btn-sm btn-secondary ${eg.paymentModalities.includes(mod) ? 'active' : ''}" onclick="togglePaymentModality(${index}, '${mod}')">
+                                    <label class="btn btn-sm btn-secondary ${eg.paymentModalities.includes(mod) ? 'active' : ''}" onclick="togglePaymentModality(${index}, '${mod}', '${eg.id}')">
                                         <input type="checkbox" ${eg.paymentModalities.includes(mod) ? 'checked' : ''} hidden>
                                         ${paymentLabels[mod]}
                                     </label>
@@ -5056,7 +5059,7 @@ function renderViewEinsatzgebiete(campaign) {
 }
 
 // Toggle Erhöhungen für ein Einsatzgebiet
-function toggleErhohungen(index) {
+async function toggleErhohungen(index, areaId) {
     const checkbox = document.getElementById(`erhohungen-${index}`);
     const label = checkbox.parentElement.querySelector('.toggle-label');
 
@@ -5076,12 +5079,24 @@ function toggleErhohungen(index) {
         badge.remove();
     }
 
-    // TODO: Save to database
-    console.log('Erhöhungen toggled for index', index, ':', checkbox.checked);
+    // Save to database
+    try {
+        const { error } = await supabase
+            .from('campaign_areas')
+            .update({ erhohungen_enabled: checkbox.checked })
+            .eq('id', areaId);
+
+        if (error) {
+            console.error('Fehler beim Speichern:', error);
+            showToast('Fehler beim Speichern', 'error');
+        }
+    } catch (err) {
+        console.error('Fehler:', err);
+    }
 }
 
 // Toggle Payment Modality für ein Einsatzgebiet
-function togglePaymentModality(index, modality) {
+async function togglePaymentModality(index, modality, areaId) {
     event.preventDefault();
     const pill = event.currentTarget;
     const checkbox = pill.querySelector('input');
@@ -5090,8 +5105,39 @@ function togglePaymentModality(index, modality) {
     pill.classList.toggle('active');
     checkbox.checked = !checkbox.checked;
 
-    // TODO: Save to database
-    console.log('Payment modality toggled for index', index, ':', modality, checkbox.checked);
+    // Collect all active modalities from the button group
+    const buttonGroup = pill.closest('.btn-toggle-group');
+    const activeModalities = [];
+    buttonGroup.querySelectorAll('.btn').forEach(btn => {
+        if (btn.classList.contains('active')) {
+            const mod = btn.textContent.trim();
+            // Map German labels back to DB values
+            const labelToValue = {
+                'Monatlich': 'monthly',
+                'Quartal': 'quarterly',
+                'Halbjährlich': 'biannual',
+                'Jährlich': 'annual'
+            };
+            if (labelToValue[mod]) {
+                activeModalities.push(labelToValue[mod]);
+            }
+        }
+    });
+
+    // Save to database
+    try {
+        const { error } = await supabase
+            .from('campaign_areas')
+            .update({ payment_modalities: activeModalities })
+            .eq('id', areaId);
+
+        if (error) {
+            console.error('Fehler beim Speichern:', error);
+            showToast('Fehler beim Speichern', 'error');
+        }
+    } catch (err) {
+        console.error('Fehler:', err);
+    }
 }
 
 // Toggle Zahlungsmodalität im WG-Config Panel

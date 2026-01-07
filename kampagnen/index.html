@@ -3116,6 +3116,27 @@ async function saveWgConfig() {
     wg.rahmenvertrag = document.getElementById('wgRahmenvertrag').value;
     wg.avv = document.getElementById('wgAvv').value;
 
+    // Zahlungsmodalitäten aus Toggle-Gruppe sammeln
+    const zahlungsSection = document.getElementById('zahlungsSection');
+    const activeModalities = [];
+    if (zahlungsSection) {
+        zahlungsSection.querySelectorAll('.btn-toggle-group .btn').forEach(btn => {
+            if (btn.classList.contains('active')) {
+                const mod = btn.textContent.trim();
+                const labelToValue = {
+                    'Monatlich': 'monthly',
+                    'Quartal': 'quarterly',
+                    'Halbjährlich': 'biannual',
+                    'Jährlich': 'annual'
+                };
+                if (labelToValue[mod]) {
+                    activeModalities.push(labelToValue[mod]);
+                }
+            }
+        });
+    }
+    wg.paymentModalities = activeModalities.length > 0 ? activeModalities : ['monthly', 'quarterly', 'biannual', 'annual'];
+
     // In Supabase speichern
     try {
         const { error } = await supabase
@@ -3131,7 +3152,8 @@ async function saveWgConfig() {
                 kosten: wg.kosten,
                 sonderposten: wg.sonderposten,
                 rahmenvertrag_name: wg.rahmenvertrag,
-                avv_url: wg.avv
+                avv_url: wg.avv,
+                payment_modalities: wg.paymentModalities
             })
             .eq('id', wg.id);
 

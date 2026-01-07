@@ -2015,21 +2015,25 @@ const streetResults = data.results.filter(result => {
                         house_number: formData.houseNumber,
                         zip_code: formData.zipCode,
                         city: formData.city,
+                        country: formData.country,
 
                         // Zahlungsdaten
                         iban: formData.iban,
                         bic: formData.bic,
                         bank_name: formData.bankName,
+                        account_holder: formData.accountHolder,
 
                         // Beiträge
                         amount: formData.amount,
                         yearly_amount: formData.yearlyAmount,
                         interval: formData.interval,
+                        donation_receipt: formData.spendenquittung,
 
                         // Erhöhungs-spezifisch
                         member_number: formData.memberNumber || null,
                         member_since: formData.memberSince || null,
                         old_amount: formData.oldAmount || null,
+                        old_interval: formData.oldInterval || null,
 
                         // Startdatum
                         start_date: formData.laterStartDate || null,
@@ -2042,15 +2046,11 @@ const streetResults = data.results.filter(result => {
                         notes: formData.notes,
                         signature: formData.signature,
 
-                        // Zusätzliche Daten als JSON (für Felder ohne eigene Spalte)
+                        // Zusätzliche Daten als JSON (nur noch Consents)
                         data: {
-                            country: formData.country,
-                            accountHolder: formData.accountHolder,
-                            spendenquittung: formData.spendenquittung,
                             consent1: formData.consent1,
                             consent2: formData.consent2,
-                            consent3: formData.consent3,
-                            oldInterval: formData.oldInterval
+                            consent3: formData.consent3
                         }
                     })
                     .select()

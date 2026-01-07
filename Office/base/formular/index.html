@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DRK Fördermitgliedschaft</title>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -1833,10 +1835,34 @@ const streetResults = data.results.filter(result => {
             }
         }
 
+        // Supabase Konfiguration
+        const SUPABASE_URL = 'https://lgztglycqtiwcmiydxnm.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnenRnbHljcXRpd2NtaXlkeG5tIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzgwNzYxNSwiZXhwIjoyMDc5MzgzNjE1fQ.54kSk9ZSUdQt6LKYWkblqgR6Sjev80W80qkNHYEbPgk';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         async function submitForm() {
             const btn = document.getElementById('validateBtn');
             btn.disabled = true;
             btn.innerHTML = 'Wird übermittelt... <span class="loading"></span>';
+
+            // Aktives Intervall ermitteln
+            const activeInterval = document.querySelector('.interval-btn.active');
+            const interval = activeInterval ? activeInterval.dataset.interval : 'monthly';
+
+            // Betrag ermitteln (aus Button oder Custom)
+            const activeAmount = document.querySelector('.amount-btn.active');
+            const customAmountField = document.getElementById('customAmount');
+            const individualAmount = document.getElementById('individualAmount');
+
+            let amount = 10; // Default
+            if (!individualAmount.classList.contains('hidden') && customAmountField.value) {
+                amount = parseFloat(customAmountField.value);
+            } else if (activeAmount) {
+                // Button-Wert ist der Monatsbetrag
+                const baseMonthly = parseFloat(activeAmount.dataset.amount);
+                const intervalMultipliers = { 'monthly': 1, 'quarterly': 3, 'halfyearly': 6, 'yearly': 12 };
+                amount = baseMonthly * intervalMultipliers[interval];
+            }
 
             // Collect form data
             const formData = {
@@ -1854,10 +1880,14 @@ const streetResults = data.results.filter(result => {
                 houseNumber: document.getElementById('houseNumber').value,
                 zipCode: document.getElementById('zipCode').value,
                 city: document.getElementById('city').value,
+                country: document.getElementById('country').value,
+                accountHolder: document.getElementById('accountHolder').value,
+                bankName: document.getElementById('bankName').value,
                 iban: document.getElementById('iban').value,
-                amount: parseFloat(document.getElementById('customAmount').value) || 10,
-                interval: document.getElementById('interval').value,
-                paymentMethod: document.querySelector('input[name="paymentMethod"]:checked').value,
+                bic: document.getElementById('bic').value,
+                amount: amount,
+                interval: interval,
+                spendenquittung: document.getElementById('spendenquittung').checked,
                 consent1: document.getElementById('consent1').checked,
                 consent2: document.getElementById('consent2').checked,
                 consent3: document.getElementById('consent3').checked,
@@ -1865,8 +1895,7 @@ const streetResults = data.results.filter(result => {
                 contactPhone: document.getElementById('contactPhone').checked,
                 laterStartDate: document.getElementById('laterStartDate').value,
                 notes: document.getElementById('notes').value,
-                signature: document.getElementById('signatureCanvas').toDataURL(),
-                created_at: new Date().toISOString()
+                signature: document.getElementById('signatureCanvas').toDataURL()
             };
 
             // Add ERH specific fields
@@ -1874,21 +1903,73 @@ const streetResults = data.results.filter(result => {
                 formData.memberNumber = document.getElementById('memberNumber').value;
                 formData.memberSince = document.getElementById('memberSince').value;
                 formData.oldAmount = parseFloat(document.getElementById('oldAmount').value);
+                formData.oldInterval = document.getElementById('oldInterval').value;
             }
 
-            // Calculate yearly amount
-            const multipliers = {
-                'monthly': 12,
-                'quarterly': 4,
-                'halfyearly': 2,
-                'yearly': 1
-            };
-            formData.yearlyAmount = formData.amount * multipliers[formData.interval];
+            // Calculate yearly amount (JE)
+            const yearMultipliers = { 'monthly': 12, 'quarterly': 4, 'halfyearly': 2, 'yearly': 1 };
+            formData.yearlyAmount = amount * yearMultipliers[interval];
 
             console.log('Form data to submit:', formData);
 
-            // Simulate API call
-            setTimeout(() => {
+            try {
+                // DUPLIKAT-PRÜFUNG: Suche nach existierendem Record mit gleichen Daten
+                const { data: existingRecords, error: searchError } = await supabaseClient
+                    .from('records')
+                    .select('id, data, created_at')
+                    .or(`data->>firstName.eq.${formData.firstName},data->>lastName.eq.${formData.lastName}`)
+                    .limit(100);
+
+                if (searchError) {
+                    console.error('Fehler bei Duplikat-Prüfung:', searchError);
+                }
+
+                // Prüfe auf echtes Duplikat (Name + Geburtsdatum + IBAN)
+                const cleanIban = formData.iban.replace(/\s/g, '');
+                const duplicateFound = existingRecords?.find(record => {
+                    const d = record.data;
+                    if (!d) return false;
+                    const existingIban = (d.iban || '').replace(/\s/g, '');
+                    return d.firstName === formData.firstName &&
+                           d.lastName === formData.lastName &&
+                           d.birthDate === formData.birthDate &&
+                           existingIban === cleanIban;
+                });
+
+                if (duplicateFound) {
+                    const dupDate = new Date(duplicateFound.created_at).toLocaleDateString('de-DE');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Jetzt überprüfen';
+                    alert(`❌ Duplikat gefunden!\n\nEin Datensatz mit diesen Daten existiert bereits (erstellt am ${dupDate}).\n\nBitte prüfen Sie die Eingaben.`);
+                    return;
+                }
+
+                // URL-Parameter für Kontext auslesen (werber_id, area_id, campaign_id)
+                const urlParams = new URLSearchParams(window.location.search);
+                const werberId = urlParams.get('werber_id') || null;
+                const areaId = urlParams.get('area_id') || null;
+                const campaignId = urlParams.get('campaign_id') || null;
+
+                // In Supabase speichern
+                const { data: insertedRecord, error: insertError } = await supabaseClient
+                    .from('records')
+                    .insert({
+                        werber_id: werberId,
+                        area_id: areaId,
+                        campaign_id: campaignId,
+                        status: 'success',
+                        synced: true,
+                        data: formData
+                    })
+                    .select()
+                    .single();
+
+                if (insertError) {
+                    throw insertError;
+                }
+
+                console.log('Record gespeichert:', insertedRecord);
+
                 // Show success page
                 document.querySelector('.container').innerHTML = `
                     <div class="header">
@@ -1907,7 +1988,12 @@ const streetResults = data.results.filter(result => {
                         </button>
                     </div>
                 `;
-            }, 2000);
+            } catch (error) {
+                console.error('Fehler beim Speichern:', error);
+                btn.disabled = false;
+                btn.innerHTML = 'Jetzt überprüfen';
+                alert(`❌ Fehler beim Speichern:\n\n${error.message || 'Unbekannter Fehler'}\n\nBitte versuchen Sie es erneut.`);
+            }
         }
     </script>
 </body>

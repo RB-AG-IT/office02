@@ -242,31 +242,107 @@
             ],
         };
 
-        // Kontext-Daten (würde normalerweise von URL-Parameter oder API kommen)
+        // Kontext-Daten (von URL-Parameter)
+        const urlParams = new URLSearchParams(window.location.search);
         const contextData = {
-            type: 'kunde',  // 'werber', 'kunde', 'werbegebiet', 'kampagne'
-            name: 'DRK KV Ludwigshafen'
+            type: urlParams.get('type') || 'all',
+            id: urlParams.get('id') || null,
+            name: urlParams.get('name') || 'Alle Datensätze'
         };
 
+        // ========== SUPABASE CLIENT ==========
+        const supabase = window.parent?.supabaseClient;
+
+        // ========== SUPABASE DATA LOADING ==========
+        async function loadRecordsFromSupabase() {
+            if (!supabase) {
+                console.warn('Supabase Client nicht verfügbar');
+                return { records: [], bestand: [] };
+            }
+
+            try {
+                // Records laden mit optionalem Filter
+                let query = supabase
+                    .from('records')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                // Filter basierend auf Kontext
+                if (contextData.type === 'werber' && contextData.id) {
+                    query = query.eq('werber_id', contextData.id);
+                } else if (contextData.type === 'kampagne' && contextData.id) {
+                    query = query.eq('campaign_id', contextData.id);
+                } else if (contextData.type === 'gebiet' && contextData.id) {
+                    query = query.eq('area_id', contextData.id);
+                }
+
+                const { data: records, error } = await query;
+
+                if (error) throw error;
+
+                // Records in das erwartete Format umwandeln
+                const formattedRecords = (records || []).map(r => {
+                    const d = r.data || {};
+                    return {
+                        id: r.id,
+                        name: `${d.firstName || ''} ${d.lastName || ''}`.trim() || 'Unbekannt',
+                        typ: (d.type || 'NMG').toLowerCase() === 'erh' ? 'erh' : 'nmg',
+                        date: r.created_at ? new Date(r.created_at).toLocaleDateString('de-DE') : '',
+                        je: `${(d.yearlyAmount || 0).toFixed(2).replace('.', ',')} €`,
+                        kunde: d.kunde || '',
+                        gebiet: d.area || '',
+                        werber: d.werber || '',
+                        teamchef: d.teamchef || '',
+                        street: d.street || '',
+                        houseNumber: d.houseNumber || '',
+                        zipCode: d.zipCode || '',
+                        city: d.city || '',
+                        email: d.email || '',
+                        phoneFixed: d.phoneFixed || '',
+                        phoneMobile: d.phoneMobile || '',
+                        status: r.status === 'success' ? 'aktiv' : 'storniert',
+                        // Alle weiteren Felder für Detail-Ansicht
+                        ...d
+                    };
+                });
+
+                return { records: formattedRecords, bestand: [] };
+            } catch (error) {
+                console.error('Fehler beim Laden der Records:', error);
+                return { records: [], bestand: [] };
+            }
+        }
+
         // ========== INIT ==========
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             // Tabs initialisieren
             initTabs('.kw-tab', '.kw-tab-content');
 
             // Zentrale Modals initialisieren
             ModalTemplates.init(['storno', 'columns', 'edit', 'import', 'export']);
 
-            // Datensätze-System initialisieren mit Test-Daten
+            // Daten aus Supabase laden
+            const { records: supabaseRecords, bestand: supabaseBestand } = await loadRecordsFromSupabase();
+
+            // Datensätze-System initialisieren mit Supabase-Daten (Fallback auf Test-Daten wenn leer)
+            const recordsToUse = supabaseRecords.length > 0 ? supabaseRecords : testRecordsData;
+            const bestandToUse = supabaseBestand.length > 0 ? supabaseBestand : testBestandData;
+
             initDatensaetze({
-                recordsData: testRecordsData,
-                bestandData: testBestandData,
+                recordsData: recordsToUse,
+                bestandData: bestandToUse,
                 historyData: testHistoryData,
                 contextData: contextData
             });
 
             // Tab-Badges aktualisieren
-            document.getElementById('recordsBadge').textContent = testRecordsData.length;
-            document.getElementById('bestandBadge').textContent = testBestandData.length;
+            document.getElementById('recordsBadge').textContent = recordsToUse.length;
+            document.getElementById('bestandBadge').textContent = bestandToUse.length;
+
+            // Kontext-Badge aktualisieren
+            if (contextData.name && contextData.name !== 'Alle Datensätze') {
+                document.getElementById('contextBadge').textContent = contextData.name;
+            }
 
             // Register toolbar config with shell (Import/Export for data tables)
             registerToolbarConfig();

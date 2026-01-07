@@ -1864,46 +1864,51 @@ const streetResults = data.results.filter(result => {
                 amount = baseMonthly * intervalMultipliers[interval];
             }
 
+            // Helper function for safe element access
+            const getValue = (id) => document.getElementById(id)?.value || '';
+            const getChecked = (id) => document.getElementById(id)?.checked || false;
+
             // Collect form data
+            const typeRadio = document.querySelector('input[name="type"]:checked');
             const formData = {
-                type: document.querySelector('input[name="type"]:checked').value,
-                company: document.getElementById('company').value,
-                salutation: document.getElementById('salutation').value,
-                title: document.getElementById('title').value,
-                firstName: document.getElementById('firstName').value,
-                lastName: document.getElementById('lastName').value,
-                birthDate: document.getElementById('birthDate').value,
-                email: document.getElementById('email').value,
-                phoneFixed: document.getElementById('phoneFixed').value,
-                phoneMobile: document.getElementById('phoneMobile').value,
-                street: document.getElementById('street').value,
-                houseNumber: document.getElementById('houseNumber').value,
-                zipCode: document.getElementById('zipCode').value,
-                city: document.getElementById('city').value,
-                country: document.getElementById('country').value,
-                accountHolder: document.getElementById('accountHolder').value,
-                bankName: document.getElementById('bankName').value,
-                iban: document.getElementById('iban').value,
-                bic: document.getElementById('bic').value,
+                type: typeRadio ? typeRadio.value : 'NMG',
+                company: getValue('company'),
+                salutation: getValue('salutation'),
+                title: getValue('title'),
+                firstName: getValue('firstName'),
+                lastName: getValue('lastName'),
+                birthDate: getValue('birthDate'),
+                email: getValue('email'),
+                phoneFixed: getValue('phoneFixed'),
+                phoneMobile: getValue('phoneMobile'),
+                street: getValue('street'),
+                houseNumber: getValue('houseNumber'),
+                zipCode: getValue('zipCode'),
+                city: getValue('city'),
+                country: getValue('country'),
+                accountHolder: getValue('accountHolder'),
+                bankName: getValue('bankName'),
+                iban: getValue('iban'),
+                bic: getValue('bic'),
                 amount: amount,
                 interval: interval,
-                spendenquittung: document.getElementById('spendenquittung').checked,
-                consent1: document.getElementById('consent1').checked,
-                consent2: document.getElementById('consent2').checked,
-                consent3: document.getElementById('consent3').checked,
-                contactEmail: document.getElementById('contactEmail').checked,
-                contactPhone: document.getElementById('contactPhone').checked,
-                laterStartDate: document.getElementById('laterStartDate').value,
-                notes: document.getElementById('notes').value,
-                signature: document.getElementById('signatureCanvas').toDataURL()
+                spendenquittung: getChecked('spendenquittung'),
+                consent1: getChecked('consent1'),
+                consent2: getChecked('consent2'),
+                consent3: getChecked('consent3'),
+                contactEmail: getChecked('contactEmail'),
+                contactPhone: getChecked('contactPhone'),
+                laterStartDate: getValue('laterStartDate'),
+                notes: getValue('notes'),
+                signature: document.getElementById('signatureCanvas')?.toDataURL() || ''
             };
 
             // Add ERH specific fields
             if (formData.type === 'ERH') {
-                formData.memberNumber = document.getElementById('memberNumber').value;
-                formData.memberSince = document.getElementById('memberSince').value;
-                formData.oldAmount = parseFloat(document.getElementById('oldAmount').value);
-                formData.oldInterval = document.getElementById('oldInterval').value;
+                formData.memberNumber = getValue('memberNumber');
+                formData.memberSince = getValue('memberSince');
+                formData.oldAmount = parseFloat(getValue('oldAmount')) || 0;
+                formData.oldInterval = getValue('oldInterval');
             }
 
             // Calculate yearly amount (JE)
@@ -1944,11 +1949,20 @@ const streetResults = data.results.filter(result => {
                     return;
                 }
 
-                // URL-Parameter für Kontext auslesen (werber_id, area_id, campaign_id)
+                // URL-Parameter für Kontext auslesen (botschafter, werbegebiet, kampagne)
                 const urlParams = new URLSearchParams(window.location.search);
-                const werberId = urlParams.get('werber_id') || null;
-                const areaId = urlParams.get('area_id') || null;
-                const campaignId = urlParams.get('campaign_id') || null;
+                const werberId = urlParams.get('botschafter') || null;
+                const areaId = urlParams.get('werbegebiet') || null;
+                const campaignId = urlParams.get('kampagne') || null;
+
+                // Validierung: Diese Felder sind in der DB NOT NULL
+                if (!werberId || !areaId || !campaignId) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Jetzt überprüfen';
+                    alert('❌ Fehler: Kontext fehlt!\n\nDas Formular muss über das Portal aufgerufen werden (Botschafter, Werbegebiet und Kampagne müssen ausgewählt sein).');
+                    console.error('Fehlende URL-Parameter:', { werberId, areaId, campaignId });
+                    return;
+                }
 
                 // In Supabase speichern
                 const { data: insertedRecord, error: insertError } = await supabaseClient

@@ -291,232 +291,240 @@
 </div><!-- Ende page-container -->
 
 <script>
-        // ========== DUMMY DATA ==========
-        const kundenData = [
-            { id: 1, name: 'DRK KV Ludwigshafen', records: 118, nettoJE: 15340, storno: 9.9 },
-            { id: 2, name: 'DRK KV Mannheim', records: 45, nettoJE: 6500, storno: 10.0 },
-            { id: 3, name: 'DRK KV Heidelberg', records: 72, nettoJE: 9360, storno: 8.2 },
-            { id: 4, name: 'DRK KV Karlsruhe', records: 95, nettoJE: 12350, storno: 11.5 }
-        ];
+        // ========== SUPABASE CLIENT ==========
+        const supabase = window.parent?.supabaseClient;
 
-        const gebieteData = [
-            { id: 1, name: 'Ludwigshafen-Mitte e.V.', records: 52, nettoJE: 6760, storno: 8.8, kundeId: 1 },
-            { id: 2, name: 'Ludwigshafen-Süd e.V.', records: 38, nettoJE: 4940, storno: 11.6, kundeId: 1 },
-            { id: 3, name: 'Oggersheim e.V.', records: 28, nettoJE: 3640, storno: 9.7, kundeId: 1 },
-            { id: 4, name: 'Mannheim-Nord e.V.', records: 25, nettoJE: 3500, storno: 10.2, kundeId: 2 },
-            { id: 5, name: 'Mannheim-Süd e.V.', records: 20, nettoJE: 3000, storno: 9.5, kundeId: 2 },
-            { id: 6, name: 'Heidelberg-Altstadt e.V.', records: 42, nettoJE: 5460, storno: 7.5, kundeId: 3 },
-            { id: 7, name: 'Heidelberg-Neuenheim e.V.', records: 30, nettoJE: 3900, storno: 9.1, kundeId: 3 },
-            { id: 8, name: 'Karlsruhe-Mitte e.V.', records: 55, nettoJE: 7150, storno: 12.3, kundeId: 4 },
-            { id: 9, name: 'Karlsruhe-Durlach e.V.', records: 40, nettoJE: 5200, storno: 10.8, kundeId: 4 }
-        ];
+        // ========== DATA (wird aus Supabase geladen) ==========
+        let kundenData = [];
+        let gebieteData = [];
+        let kampagnenData = [];
+        let werberData = [];
+        let statistikRecordsData = [];
 
-        const kampagnenData = [
-            { id: 1, name: 'Frühjahrskampagne 2024', records: 85, nettoJE: 11050, storno: 8.5, gebieteIds: [1, 2, 3] },
-            { id: 2, name: 'Sommerkampagne 2024', records: 50, nettoJE: 6500, storno: 12.0, gebieteIds: [1, 4] },
-            { id: 3, name: 'Herbstkampagne 2024', records: 28, nettoJE: 4290, storno: 7.1, gebieteIds: [2, 5] },
-            { id: 4, name: 'Winterkampagne 2024', records: 62, nettoJE: 8060, storno: 9.3, gebieteIds: [6, 7, 8] },
-            { id: 5, name: 'Sonderkampagne Heidelberg', records: 35, nettoJE: 4550, storno: 6.8, gebieteIds: [6, 7] }
-        ];
-
-        let werberData = [
-            { id: 1, name: 'Max Mustermann', initials: 'MM', color: '#6366f1', records: 45, nettoJE: 5850, storno: 8.9, role: 'EMM' },
-            { id: 2, name: 'Anna Schmidt', initials: 'AS', color: '#6366f1', records: 38, nettoJE: 4940, storno: 10.5, role: 'CEMM' },
-            { id: 3, name: 'Peter Weber', initials: 'PW', color: '#6366f1', records: 52, nettoJE: 6760, storno: 7.7, role: 'SMA' },
-            { id: 4, name: 'Lisa Müller', initials: 'LM', color: '#6366f1', records: 28, nettoJE: 3640, storno: 12.1, role: 'JMM' },
-            { id: 5, name: 'Thomas Bauer', initials: 'TB', color: '#6366f1', records: 33, nettoJE: 4290, storno: 9.1, role: 'EMA' },
-            { id: 6, name: 'Sandra Hoffmann', initials: 'SH', color: '#6366f1', records: 41, nettoJE: 5330, storno: 7.3, role: 'SPB' },
-            { id: 7, name: 'Michael Wagner', initials: 'MW', color: '#6366f1', records: 56, nettoJE: 7280, storno: 6.8, role: 'KAD' },
-            { id: 8, name: 'Claudia Fischer', initials: 'CF', color: '#6366f1', records: 29, nettoJE: 3770, storno: 11.2, role: 'SMA' },
-            { id: 9, name: 'Stefan Meyer', initials: 'SM', color: '#6366f1', records: 47, nettoJE: 6110, storno: 8.4, role: 'EMM' },
-            { id: 10, name: 'Nicole Richter', initials: 'NR', color: '#6366f1', records: 35, nettoJE: 4550, storno: 9.8, role: 'JMM' },
-            { id: 11, name: 'Markus Klein', initials: 'MK', color: '#6366f1', records: 42, nettoJE: 5460, storno: 7.9, role: 'EMA' },
-            { id: 12, name: 'Petra Wolf', initials: 'PW', color: '#6366f1', records: 31, nettoJE: 4030, storno: 10.8, role: 'SMA' },
-            { id: 13, name: 'Frank Schröder', initials: 'FS', color: '#6366f1', records: 49, nettoJE: 6370, storno: 8.1, role: 'CEMM' },
-            { id: 14, name: 'Birgit Neumann', initials: 'BN', color: '#6366f1', records: 37, nettoJE: 4810, storno: 9.4, role: 'JMM' },
-            { id: 15, name: 'Jürgen Braun', initials: 'JB', color: '#6366f1', records: 54, nettoJE: 7020, storno: 7.1, role: 'SPB' },
-            { id: 16, name: 'Monika Zimmermann', initials: 'MZ', color: '#6366f1', records: 26, nettoJE: 3380, storno: 12.5, role: 'SMA' },
-            { id: 17, name: 'Ralf Krüger', initials: 'RK', color: '#6366f1', records: 44, nettoJE: 5720, storno: 8.6, role: 'EMM' },
-            { id: 18, name: 'Heike Hartmann', initials: 'HH', color: '#6366f1', records: 39, nettoJE: 5070, storno: 9.2, role: 'EMA' },
-            { id: 19, name: 'Dirk Lange', initials: 'DL', color: '#6366f1', records: 51, nettoJE: 6630, storno: 7.5, role: 'KAD' },
-            { id: 20, name: 'Anja Werner', initials: 'AW', color: '#6366f1', records: 32, nettoJE: 4160, storno: 10.3, role: 'JMM' },
-            { id: 21, name: 'Uwe Krause', initials: 'UK', color: '#6366f1', records: 46, nettoJE: 5980, storno: 8.2, role: 'CEMM' },
-            { id: 22, name: 'Karin Meier', initials: 'KM', color: '#6366f1', records: 34, nettoJE: 4420, storno: 9.6, role: 'SMA' },
-            { id: 23, name: 'Bernd Schulz', initials: 'BS', color: '#6366f1', records: 58, nettoJE: 7540, storno: 6.5, role: 'FUE' },
-            { id: 24, name: 'Martina Koch', initials: 'MK', color: '#6366f1', records: 30, nettoJE: 3900, storno: 11.0, role: 'EMA' },
-            { id: 25, name: 'Christian Becker', initials: 'CB', color: '#6366f1', records: 43, nettoJE: 5590, storno: 8.0, role: 'EMM' },
-            { id: 26, name: 'Julia Schwarz', initials: 'JS', color: '#6366f1', records: 36, nettoJE: 4680, storno: 9.5, role: 'JMM' },
-            { id: 27, name: 'Andreas Schäfer', initials: 'AS', color: '#6366f1', records: 48, nettoJE: 6240, storno: 8.3, role: 'SPB' },
-            { id: 28, name: 'Sabine König', initials: 'SK', color: '#6366f1', records: 27, nettoJE: 3510, storno: 11.8, role: 'SMA' }
-        ];
-
-        // Generate 100 dummy records with ALL form fields
-        const statistikRecordsData = (function() {
-            const vornamen = ['Max', 'Erika', 'Hans', 'Maria', 'Peter', 'Sabine', 'Thomas', 'Laura', 'Michael', 'Julia', 'Andreas', 'Claudia', 'Stefan', 'Martina', 'Christian', 'Nicole', 'Markus', 'Sandra', 'Frank', 'Petra', 'Jürgen', 'Monika', 'Uwe', 'Karin', 'Ralf', 'Birgit', 'Bernd', 'Heike', 'Dirk', 'Anja'];
-            const nachnamen = ['Müller', 'Schmidt', 'Schneider', 'Fischer', 'Weber', 'Meyer', 'Wagner', 'Becker', 'Schulz', 'Hoffmann', 'Koch', 'Richter', 'Klein', 'Wolf', 'Schröder', 'Neumann', 'Schwarz', 'Braun', 'Zimmermann', 'Krüger', 'Hartmann', 'Lange', 'Werner', 'Krause', 'Meier'];
-            const strassen = ['Hauptstr.', 'Bahnhofstr.', 'Gartenweg', 'Ringstr.', 'Am Markt', 'Waldstr.', 'Beethovenstr.', 'Schillerstr.', 'Rheinstr.', 'Mozartstr.', 'Goethestr.', 'Kirchstr.', 'Schulstr.', 'Bergstr.', 'Lindenstr.'];
-            const areas = ['Ludwigshafen-Mitte', 'Ludwigshafen-Süd', 'Oggersheim', 'Mannheim-Nord', 'Mannheim-Süd'];
-            const kunden = ['DRK KV Ludwigshafen', 'DRK KV Mannheim'];
-            const werber = ['Anna Schmidt', 'Max Müller', 'Tim Bauer', 'Lisa Weber'];
-            const teamchefs = ['Michael Wagner', 'Sandra Hoffmann', 'Klaus Meier'];
-            const jeWerte = [60, 120, 180, 240];
-            const types = ['nmg', 'nmg', 'nmg', 'erh']; // 75% NMG, 25% ERH
-            const anreden = ['Herr', 'Frau', 'Divers'];
-            const titel = ['', '', '', '', 'Dr.', 'Prof.', 'Prof. Dr.']; // Meist kein Titel
-            const firmen = ['', '', '', '', '', 'Musterfirma GmbH', 'Beispiel AG', 'Test & Co. KG'];
-            const intervalle = ['monthly', 'quarterly', 'halfyearly', 'yearly'];
-            const intervallLabels = { monthly: 'Monatlich', quarterly: 'Vierteljährlich', halfyearly: 'Halbjährlich', yearly: 'Jährlich' };
-            const intervallMultiplier = { monthly: 12, quarterly: 4, halfyearly: 2, yearly: 1 };
-            const banken = ['Sparkasse Ludwigshafen', 'Volksbank Rhein-Neckar', 'Deutsche Bank', 'Commerzbank', 'ING DiBa', 'Postbank'];
-            const laender = ['Deutschland', 'Deutschland', 'Deutschland', 'Deutschland', 'Österreich', 'Schweiz'];
-
-            const records = [];
-            const startDate = new Date('2024-11-25');
-
-            // Generate random IBAN (German format)
-            function generateIBAN() {
-                const bankCode = ['37040044', '50010517', '67050505', '54550010'][Math.floor(Math.random() * 4)];
-                const accountNr = String(Math.floor(Math.random() * 9999999999)).padStart(10, '0');
-                return `DE${String(Math.floor(Math.random() * 90) + 10).padStart(2, '0')} ${bankCode.substring(0,4)} ${bankCode.substring(4)} ${accountNr.substring(0,4)} ${accountNr.substring(4,8)} ${accountNr.substring(8)}`;
+        // ========== SUPABASE DATA LOADING ==========
+        async function loadAllDataFromSupabase() {
+            if (!supabase) {
+                console.warn('Supabase Client nicht verfügbar - verwende Fallback-Daten');
+                loadFallbackData();
+                return;
             }
 
-            // Generate random BIC
-            function generateBIC() {
-                const bics = ['COBADEFFXXX', 'DEUTDEDB', 'GENODEF1S01', 'PBNKDEFF', 'INGDDEFF'];
-                return bics[Math.floor(Math.random() * bics.length)];
-            }
+            try {
+                // 1. Werber (Users) laden
+                const { data: users, error: usersError } = await supabase
+                    .from('users')
+                    .select('id, name, email, role')
+                    .eq('role', 'werber');
 
-            // Generate random phone number
-            function generatePhone(mobile = false) {
-                if (mobile) {
-                    const prefix = ['0151', '0152', '0157', '0160', '0170', '0171', '0175', '0176', '0177', '0178', '0179'];
-                    return `${prefix[Math.floor(Math.random() * prefix.length)]} ${Math.floor(Math.random() * 90000000) + 10000000}`;
-                } else {
-                    return `0621 ${Math.floor(Math.random() * 9000000) + 1000000}`;
+                if (usersError) throw usersError;
+
+                // 2. User Roles für Karrierestufen laden
+                const { data: userRoles, error: rolesError } = await supabase
+                    .from('user_roles')
+                    .select('user_id, role_code')
+                    .eq('role_type', 'career')
+                    .eq('is_current', true);
+
+                // 3. Records laden
+                const { data: records, error: recordsError } = await supabase
+                    .from('records')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (recordsError) throw recordsError;
+
+                // 4. Kampagnen laden
+                const { data: campaigns, error: campaignsError } = await supabase
+                    .from('campaigns')
+                    .select('*');
+
+                // 5. Werbegebiete laden
+                const { data: areas, error: areasError } = await supabase
+                    .from('werbegebiete')
+                    .select('*');
+
+                // 6. Kunden laden (falls Tabelle existiert)
+                let customers = [];
+                try {
+                    const { data: customersData } = await supabase
+                        .from('customers')
+                        .select('*');
+                    customers = customersData || [];
+                } catch (e) {
+                    console.log('Kunden-Tabelle nicht vorhanden');
                 }
+
+                // Daten verarbeiten und in Statistik-Format umwandeln
+                processLoadedData(users || [], userRoles || [], records || [], campaigns || [], areas || [], customers);
+
+            } catch (error) {
+                console.error('Fehler beim Laden der Daten:', error);
+                loadFallbackData();
             }
+        }
 
-            // Generate random birth date (18-85 years old)
-            function generateBirthDate() {
-                const today = new Date();
-                const minAge = 18, maxAge = 85;
-                const year = today.getFullYear() - minAge - Math.floor(Math.random() * (maxAge - minAge));
-                const month = Math.floor(Math.random() * 12);
-                const day = Math.floor(Math.random() * 28) + 1;
-                return new Date(year, month, day).toISOString().split('T')[0];
-            }
+        function processLoadedData(users, userRoles, records, campaigns, areas, customers) {
+            // Werber-Daten aufbereiten
+            const roleMap = {};
+            userRoles.forEach(r => { roleMap[r.user_id] = r.role_code; });
 
-            // Generate member since date for ERH (1-10 years ago)
-            function generateMemberSince() {
-                const today = new Date();
-                const yearsAgo = Math.floor(Math.random() * 10) + 1;
-                const date = new Date(today.getFullYear() - yearsAgo, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1);
-                return date.toISOString().split('T')[0];
-            }
+            werberData = users.map(user => {
+                const userRecords = records.filter(r => r.werber_id === user.id);
+                const activeRecords = userRecords.filter(r => r.status === 'success');
+                const stornoRecords = userRecords.filter(r => r.status === 'error' || r.data?.status === 'storniert');
+                const totalJE = activeRecords.reduce((sum, r) => sum + (r.data?.yearlyAmount || 0), 0);
+                const stornoQuote = userRecords.length > 0 ? (stornoRecords.length / userRecords.length * 100) : 0;
 
-            for (let i = 1; i <= 100; i++) {
-                const dayOffset = Math.floor((i - 1) / 4); // ~4 records per day
-                const date = new Date(startDate);
-                date.setDate(date.getDate() - dayOffset);
-                const dateStr = date.toISOString().split('T')[0];
+                const nameParts = user.name.split(' ');
+                const initials = nameParts.map(n => n[0]).join('').toUpperCase().substring(0, 2);
 
-                const vorname = vornamen[Math.floor(Math.random() * vornamen.length)];
-                const nachname = nachnamen[Math.floor(Math.random() * nachnamen.length)];
-                const strasse = strassen[Math.floor(Math.random() * strassen.length)];
-                const hausnr = Math.floor(Math.random() * 99) + 1;
-                const plz = ['67059', '67063', '67071', '68159', '68161'][Math.floor(Math.random() * 5)];
-                const city = ['Ludwigshafen', 'Mannheim'][Math.floor(Math.random() * 2)];
-                const area = areas[Math.floor(Math.random() * areas.length)];
-                const kunde = area.startsWith('Mannheim') ? 'DRK KV Mannheim' : 'DRK KV Ludwigshafen';
-                const type = types[Math.floor(Math.random() * types.length)];
-                const interval = intervalle[Math.floor(Math.random() * intervalle.length)];
-                const je = jeWerte[Math.floor(Math.random() * jeWerte.length)];
-                const amount = je / intervallMultiplier[interval]; // Beitrag pro Intervall
-                const anrede = anreden[Math.floor(Math.random() * anreden.length)];
-                const titelVal = titel[Math.floor(Math.random() * titel.length)];
-                const firma = firmen[Math.floor(Math.random() * firmen.length)];
-                const land = laender[Math.floor(Math.random() * laender.length)];
-
-                const record = {
-                    // System-Felder
-                    id: i,
-                    status: Math.random() > 0.1 ? 'active' : 'storniert',
-
-                    // Persönliche Daten
-                    type: type,
-                    salutation: anrede,
-                    title: titelVal,
-                    company: firma,
-                    firstName: vorname,
-                    lastName: nachname,
-                    name: `${vorname} ${nachname}`, // Kombiniert für Anzeige
-                    birthDate: generateBirthDate(),
-                    email: `${vorname.toLowerCase()}.${nachname.toLowerCase()}@email.de`,
-                    phoneMobile: Math.random() > 0.3 ? generatePhone(true) : '',
-                    phoneFixed: Math.random() > 0.5 ? generatePhone(false) : '',
-
-                    // Anschrift
-                    street: strasse,
-                    houseNumber: String(hausnr),
-                    zipCode: plz,
-                    city: city,
-                    country: land,
-                    address: `${strasse} ${hausnr}, ${plz} ${city}`, // Kombiniert für Anzeige
-
-                    // Zahlungsinformation
-                    accountHolder: `${vorname} ${nachname}`,
-                    bankName: banken[Math.floor(Math.random() * banken.length)],
-                    iban: generateIBAN(),
-                    bic: generateBIC(),
-
-                    // Beitrag
-                    amount: amount,
-                    interval: interval,
-                    intervalLabel: intervallLabels[interval],
-                    je: je, // Jahreseuros
-                    spendenquittung: Math.random() > 0.7,
-
-                    // Einwilligungen
-                    consent1: true,
-                    consent2: true,
-                    consent3: true,
-                    contactEmail: Math.random() > 0.2,
-                    contactPhone: Math.random() > 0.4,
-
-                    // Sonstiges
-                    laterStartDate: Math.random() > 0.9 ? new Date(Date.now() + Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : '',
-                    notes: Math.random() > 0.8 ? 'Kunde wünscht Kontakt nur per Email' : '',
-                    createdAt: dateStr,
-                    date: dateStr, // Alias für Anzeige
-
-                    // Externe Zuordnungen
-                    area: area,
-                    kunde: kunde,
-                    werber: werber[Math.floor(Math.random() * werber.length)],
-                    teamchef: teamchefs[Math.floor(Math.random() * teamchefs.length)],
-
-                    // Einheiten (EH) berechnet aus JE
-                    eh: je / 60,
-
-                    // IDs für Filterung
-                    kundeId: kunde === 'DRK KV Ludwigshafen' ? 1 : 2,
-                    gebietId: area === 'Ludwigshafen-Mitte' ? 1 : area === 'Ludwigshafen-Süd' ? 2 : area === 'Oggersheim' ? 3 : area === 'Mannheim-Nord' ? 4 : 5,
-                    werberId: Math.floor(Math.random() * 4) + 1, // 1-4 matching werberData
-                    beitrag: amount // Alias für Anzeige in Letzte 100
+                return {
+                    id: user.id,
+                    name: user.name,
+                    initials: initials,
+                    color: '#6366f1',
+                    records: activeRecords.length,
+                    nettoJE: totalJE,
+                    storno: parseFloat(stornoQuote.toFixed(1)),
+                    role: roleMap[user.id] || 'MA'
                 };
+            });
 
-                // ERH-spezifische Felder
-                if (type === 'erh') {
-                    record.memberNumber = `M-${2020 - Math.floor(Math.random() * 5)}-${String(Math.floor(Math.random() * 999) + 1).padStart(3, '0')}`;
-                    record.memberSince = generateMemberSince();
-                    record.oldAmount = [5, 10, 15][Math.floor(Math.random() * 3)];
-                    record.oldInterval = 'monthly';
-                }
+            // Kampagnen-Daten aufbereiten
+            kampagnenData = (campaigns || []).map(c => {
+                const campaignRecords = records.filter(r => r.campaign_id === c.id);
+                const activeRecords = campaignRecords.filter(r => r.status === 'success');
+                const stornoRecords = campaignRecords.filter(r => r.status === 'error');
+                const totalJE = activeRecords.reduce((sum, r) => sum + (r.data?.yearlyAmount || 0), 0);
+                const stornoQuote = campaignRecords.length > 0 ? (stornoRecords.length / campaignRecords.length * 100) : 0;
 
-                records.push(record);
+                const campaignAreas = (areas || []).filter(a => a.campaign_id === c.id);
+
+                return {
+                    id: c.id,
+                    name: c.name,
+                    records: activeRecords.length,
+                    nettoJE: totalJE,
+                    storno: parseFloat(stornoQuote.toFixed(1)),
+                    gebieteIds: campaignAreas.map(a => a.id)
+                };
+            });
+
+            // Gebiete-Daten aufbereiten
+            gebieteData = (areas || []).map(a => {
+                const areaRecords = records.filter(r => r.area_id === a.id);
+                const activeRecords = areaRecords.filter(r => r.status === 'success');
+                const stornoRecords = areaRecords.filter(r => r.status === 'error');
+                const totalJE = activeRecords.reduce((sum, r) => sum + (r.data?.yearlyAmount || 0), 0);
+                const stornoQuote = areaRecords.length > 0 ? (stornoRecords.length / areaRecords.length * 100) : 0;
+
+                return {
+                    id: a.id,
+                    name: `${a.ort} (${a.plz})`,
+                    records: activeRecords.length,
+                    nettoJE: totalJE,
+                    storno: parseFloat(stornoQuote.toFixed(1)),
+                    kundeId: null, // TODO: Kunde-Zuordnung
+                    campaignId: a.campaign_id
+                };
+            });
+
+            // Kunden-Daten (aggregiert aus Gebieten oder aus customers Tabelle)
+            if (customers.length > 0) {
+                kundenData = customers.map(c => {
+                    const customerAreas = gebieteData.filter(g => g.kundeId === c.id);
+                    return {
+                        id: c.id,
+                        name: c.name,
+                        records: customerAreas.reduce((sum, a) => sum + a.records, 0),
+                        nettoJE: customerAreas.reduce((sum, a) => sum + a.nettoJE, 0),
+                        storno: customerAreas.length > 0 ? customerAreas.reduce((sum, a) => sum + a.storno, 0) / customerAreas.length : 0
+                    };
+                });
+            } else {
+                // Fallback: Gebiete als "Kunden" gruppieren
+                kundenData = [];
             }
-            return records;
-        })();
+
+            // Records für Statistik aufbereiten
+            const intervallLabels = { monthly: 'Monatlich', quarterly: 'Vierteljährlich', halfyearly: 'Halbjährlich', yearly: 'Jährlich' };
+
+            statistikRecordsData = records.map((r, idx) => {
+                const d = r.data || {};
+                const werber = werberData.find(w => w.id === r.werber_id);
+                const area = gebieteData.find(a => a.id === r.area_id);
+                const campaign = kampagnenData.find(c => c.id === r.campaign_id);
+
+                return {
+                    id: r.id || idx + 1,
+                    status: r.status === 'success' ? 'aktiv' : 'storniert',
+                    type: (d.type || 'NMG').toLowerCase(),
+                    salutation: d.salutation || '',
+                    title: d.title || '',
+                    company: d.company || '',
+                    firstName: d.firstName || '',
+                    lastName: d.lastName || '',
+                    name: `${d.firstName || ''} ${d.lastName || ''}`.trim(),
+                    birthDate: d.birthDate || '',
+                    email: d.email || '',
+                    phoneMobile: d.phoneMobile || '',
+                    phoneFixed: d.phoneFixed || '',
+                    street: d.street || '',
+                    houseNumber: d.houseNumber || '',
+                    zipCode: d.zipCode || '',
+                    city: d.city || '',
+                    country: d.country || 'Deutschland',
+                    address: `${d.street || ''} ${d.houseNumber || ''}, ${d.zipCode || ''} ${d.city || ''}`.trim(),
+                    accountHolder: d.accountHolder || '',
+                    bankName: d.bankName || '',
+                    iban: d.iban || '',
+                    bic: d.bic || '',
+                    amount: d.amount || 0,
+                    interval: d.interval || 'monthly',
+                    intervalLabel: intervallLabels[d.interval] || 'Monatlich',
+                    je: d.yearlyAmount || 0,
+                    eh: (d.yearlyAmount || 0) / 60,
+                    spendenquittung: d.spendenquittung || false,
+                    consent1: d.consent1 || false,
+                    consent2: d.consent2 || false,
+                    consent3: d.consent3 || false,
+                    contactEmail: d.contactEmail || false,
+                    contactPhone: d.contactPhone || false,
+                    laterStartDate: d.laterStartDate || '',
+                    notes: d.notes || '',
+                    createdAt: r.created_at,
+                    date: r.created_at ? r.created_at.split('T')[0] : '',
+                    area: area?.name || '',
+                    kunde: '',
+                    werber: werber?.name || '',
+                    teamchef: '',
+                    werberId: r.werber_id,
+                    gebietId: r.area_id,
+                    campaignId: r.campaign_id,
+                    memberNumber: d.memberNumber || '',
+                    memberSince: d.memberSince || '',
+                    oldAmount: d.oldAmount || 0,
+                    oldInterval: d.oldInterval || ''
+                };
+            });
+
+            console.log('Daten geladen:', {
+                werber: werberData.length,
+                kampagnen: kampagnenData.length,
+                gebiete: gebieteData.length,
+                records: statistikRecordsData.length
+            });
+        }
+
+        function loadFallbackData() {
+            // Minimale Fallback-Daten wenn Supabase nicht verfügbar
+            kundenData = [];
+            gebieteData = [];
+            kampagnenData = [];
+            werberData = [];
+            statistikRecordsData = [];
+            console.log('Fallback: Leere Daten geladen');
+        }
 
         // ========== STATE ==========
         let currentCategory = 'werber';
@@ -612,7 +620,11 @@
         ];
 
         // ========== INITIALIZATION ==========
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Erst Daten aus Supabase laden
+            await loadAllDataFromSupabase();
+
+            // Dann Tabellen rendern
             renderWerberTable();
             renderKundenGebieteTable();
             renderKampagnenTable();

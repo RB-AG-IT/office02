@@ -1982,7 +1982,7 @@ function initCampaignWerbegebiete(campaign) {
     console.log(`${campaignWerbegebiete.length} Werbegebiete für Kampagne initialisiert`);
 }
 
-// Alle Werbegebiete der Kampagne anzeigen (unabhängig vom Kunden)
+// Alle Werbegebiete der Kampagne anzeigen (gruppiert nach Kunde)
 function renderAllCampaignWerbegebiete() {
     const section = document.getElementById('wgAllSection');
     const container = document.getElementById('wgAllList');
@@ -1996,33 +1996,52 @@ function renderAllCampaignWerbegebiete() {
     section.style.display = 'block';
     countBadge.textContent = campaignWerbegebiete.length;
 
-    container.innerHTML = campaignWerbegebiete.map(wg => {
-        const wgInitials = getInitials(wg.name);
-        const isActive = activeWgConfig === wg.id;
+    // Nach Kunde gruppieren
+    const kundenMap = {};
+    campaignWerbegebiete.forEach(wg => {
+        const kundeId = wg.kunde || 'unbekannt';
         const kundeName = wg.kundeName || 'Unbekannt';
+        if (!kundenMap[kundeId]) {
+            kundenMap[kundeId] = { name: kundeName, wgs: [] };
+        }
+        kundenMap[kundeId].wgs.push(wg);
+    });
 
-        return `
-            <div class="anzeigenfeld anzeigenfeld--card ${isActive ? 'active' : ''}">
-                <div class="anzeigenfeld--card-main" onclick="openWgConfig('${wg.id}')">
-                    <div class="user-badge user-badge--werbegebiet user-badge--small">
-                        <div class="user-badge__avatar">${wgInitials}</div>
-                        <div class="user-badge__info">
-                            <span class="user-badge__name">${wg.name}</span>
-                            <span class="user-badge__type">${kundeName}</span>
+    let html = '';
+    Object.entries(kundenMap).forEach(([kundeId, data]) => {
+        // Kunde Header
+        html += `<div class="eingabefeld-beschriftung-oben" style="margin-top: var(--spacing-md); margin-bottom: var(--spacing-xs);">${data.name}</div>`;
+
+        // WGs des Kunden
+        data.wgs.forEach(wg => {
+            const wgInitials = getInitials(wg.name);
+            const isActive = activeWgConfig === wg.id;
+
+            html += `
+                <div class="anzeigenfeld anzeigenfeld--card ${isActive ? 'active' : ''}">
+                    <div class="anzeigenfeld--card-main" onclick="openWgConfig('${wg.id}')">
+                        <div class="user-badge user-badge--werbegebiet user-badge--small">
+                            <div class="user-badge__avatar">${wgInitials}</div>
+                            <div class="user-badge__info">
+                                <span class="user-badge__name">${wg.name}</span>
+                                <span class="user-badge__type">Werbegebiet</span>
+                            </div>
                         </div>
                     </div>
+                    <div class="anzeigenfeld--card-actions">
+                        <button class="btn btn-sm btn--hover-blau" onclick="event.stopPropagation(); openFormularLink('${wg.id}')" title="Formular öffnen">
+                            <span class="icon icon--dokument"></span>
+                        </button>
+                        <button class="btn btn-sm btn--hover-blau" onclick="event.stopPropagation(); copyFormularLink('${wg.id}')" title="Link kopieren">
+                            <span class="icon icon--clipboard"></span>
+                        </button>
+                    </div>
                 </div>
-                <div class="anzeigenfeld--card-actions">
-                    <button class="btn btn-sm btn--hover-blau" onclick="event.stopPropagation(); openFormularLink('${wg.id}')" title="Formular öffnen">
-                        <span class="icon icon--dokument"></span>
-                    </button>
-                    <button class="btn btn-sm btn--hover-blau" onclick="event.stopPropagation(); copyFormularLink('${wg.id}')" title="Link kopieren">
-                        <span class="icon icon--clipboard"></span>
-                    </button>
-                </div>
-            </div>
-        `;
-    }).join('');
+            `;
+        });
+    });
+
+    container.innerHTML = html;
 }
 
 // Settings Modal öffnen

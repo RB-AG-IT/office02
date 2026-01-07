@@ -3235,6 +3235,13 @@ function setWgConfigEditable(editable) {
         }
     });
 
+    // Zahlungsmodalitäten Toggle-Buttons
+    const zahlungsBtns = configBody.querySelectorAll('.btn-toggle-group .btn');
+    zahlungsBtns.forEach(btn => {
+        btn.style.pointerEvents = editable ? 'auto' : 'none';
+        btn.style.opacity = editable ? '1' : '0.6';
+    });
+
     // Gruppenbild Upload
     const gruppenbildUpload = document.getElementById('gruppenbildUpload');
     if (gruppenbildUpload) {

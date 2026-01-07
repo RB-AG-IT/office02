@@ -364,6 +364,12 @@
             // Daten aus Supabase laden
             await loadAllData();
 
+            // Spalten-Vorlagen laden (mit User-ID falls verfügbar)
+            const userId = window.parent?.currentUserId || null;
+            if (typeof initColumnTemplates === 'function') {
+                initColumnTemplates(userId);
+            }
+
             // Kontext aus URL
             const contextData = getContextData();
 

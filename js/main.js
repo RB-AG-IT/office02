@@ -3970,6 +3970,7 @@ function createTotalsNameCell(count) {
  */
 const columnDefinitions = {
     records: [
+        // Basis-Felder (Standard sichtbar)
         { id: 'name', label: 'Name', visible: true, required: true },
         { id: 'typ', label: 'Typ', visible: true, required: false },
         { id: 'status', label: 'Status', visible: true, required: false },
@@ -3979,13 +3980,39 @@ const columnDefinitions = {
         { id: 'gebiet', label: 'Werbegebiet', visible: true, required: false },
         { id: 'werber', label: 'Werber', visible: true, required: false },
         { id: 'teamchef', label: 'Teamchef', visible: true, required: false },
+        // Adresse
         { id: 'street', label: 'Straße', visible: true, required: false },
         { id: 'houseNumber', label: 'Nr', visible: true, required: false },
         { id: 'zipCode', label: 'PLZ', visible: true, required: false },
         { id: 'city', label: 'Ort', visible: true, required: false },
+        { id: 'country', label: 'Land', visible: false, required: false },
+        // Kontakt
         { id: 'email', label: 'E-Mail', visible: true, required: false },
         { id: 'phoneFixed', label: 'Tel. Festnetz', visible: true, required: false },
-        { id: 'phoneMobile', label: 'Tel. Mobil', visible: true, required: false }
+        { id: 'phoneMobile', label: 'Tel. Mobil', visible: true, required: false },
+        // Persönliche Daten (Standard ausgeblendet)
+        { id: 'salutation', label: 'Anrede', visible: false, required: false },
+        { id: 'title', label: 'Titel', visible: false, required: false },
+        { id: 'company', label: 'Firma', visible: false, required: false },
+        { id: 'birthDate', label: 'Geburtsdatum', visible: false, required: false },
+        // Zahlungsdaten (Standard ausgeblendet)
+        { id: 'iban', label: 'IBAN', visible: false, required: false },
+        { id: 'bic', label: 'BIC', visible: false, required: false },
+        { id: 'bankName', label: 'Bank', visible: false, required: false },
+        { id: 'accountHolder', label: 'Kontoinhaber', visible: false, required: false },
+        // Beiträge
+        { id: 'amount', label: 'Betrag', visible: false, required: false },
+        { id: 'interval', label: 'Intervall', visible: false, required: false },
+        { id: 'donationReceipt', label: 'Spendenquittung', visible: false, required: false },
+        // Erhöhungs-spezifisch
+        { id: 'memberNumber', label: 'Mitgliedsnr.', visible: false, required: false },
+        { id: 'memberSince', label: 'Mitglied seit', visible: false, required: false },
+        { id: 'oldAmount', label: 'Alter Betrag', visible: false, required: false },
+        { id: 'oldInterval', label: 'Altes Intervall', visible: false, required: false },
+        // Sonstiges
+        { id: 'notes', label: 'Notizen', visible: false, required: false },
+        { id: 'stornoDate', label: 'Storno-Datum', visible: false, required: false },
+        { id: 'stornoReason', label: 'Storno-Grund', visible: false, required: false }
     ],
     bestand: [
         { id: 'name', label: 'Name', visible: true, required: true },
@@ -4456,22 +4483,49 @@ function renderRecordsTable() {
 
     // Header-Definitionen (generische Spaltenbreiten)
     const headerDefs = {
+        // Basis-Felder
         name: { class: 'col-name text-left', label: 'Name' },
         typ: { class: 'col-s text-center', label: 'Typ' },
+        status: { class: 'col-s text-center', label: 'Status' },
         date: { class: 'col-m text-left', label: 'Datum' },
         je: { class: 'col-s text-right', label: 'JE' },
         kunde: { class: 'col-m text-left', label: 'Kunde' },
         gebiet: { class: 'col-m text-left', label: 'Werbegebiet' },
         werber: { class: 'col-m text-left', label: 'Werber' },
         teamchef: { class: 'col-m text-left', label: 'Teamchef' },
+        // Adresse
         street: { class: 'col-m text-left', label: 'Straße' },
         houseNumber: { class: 'col-s text-left', label: 'Nr' },
         zipCode: { class: 'col-s text-left', label: 'PLZ' },
         city: { class: 'col-m text-left', label: 'Ort' },
+        country: { class: 'col-s text-left', label: 'Land' },
+        // Kontakt
         email: { class: 'col-xl text-left', label: 'E-Mail' },
         phoneFixed: { class: 'col-m text-left', label: 'Tel. Festnetz' },
         phoneMobile: { class: 'col-m text-left', label: 'Tel. Mobil' },
-        status: { class: 'col-s text-center', label: 'Status' }
+        // Persönliche Daten
+        salutation: { class: 'col-s text-left', label: 'Anrede' },
+        title: { class: 'col-s text-left', label: 'Titel' },
+        company: { class: 'col-m text-left', label: 'Firma' },
+        birthDate: { class: 'col-m text-left', label: 'Geburtsdatum' },
+        // Zahlungsdaten
+        iban: { class: 'col-xl text-left', label: 'IBAN' },
+        bic: { class: 'col-m text-left', label: 'BIC' },
+        bankName: { class: 'col-m text-left', label: 'Bank' },
+        accountHolder: { class: 'col-m text-left', label: 'Kontoinhaber' },
+        // Beiträge
+        amount: { class: 'col-s text-right', label: 'Betrag' },
+        interval: { class: 'col-s text-left', label: 'Intervall' },
+        donationReceipt: { class: 'col-s text-center', label: 'Spendenquittung' },
+        // Erhöhungs-spezifisch
+        memberNumber: { class: 'col-m text-left', label: 'Mitgliedsnr.' },
+        memberSince: { class: 'col-m text-left', label: 'Mitglied seit' },
+        oldAmount: { class: 'col-s text-right', label: 'Alter Betrag' },
+        oldInterval: { class: 'col-s text-left', label: 'Altes Intervall' },
+        // Sonstiges
+        notes: { class: 'col-l text-left', label: 'Notizen' },
+        stornoDate: { class: 'col-m text-left', label: 'Storno-Datum' },
+        stornoReason: { class: 'col-m text-left', label: 'Storno-Grund' }
     };
 
     // Header rendern
@@ -4506,24 +4560,60 @@ function renderRecordsTable() {
     if (!body) return;
 
     body.innerHTML = filtered.map(d => {
+        // Intervall-Mapping für Anzeige
+        const intervalLabels = { 'monthly': 'Monatlich', 'quarterly': 'Vierteljährlich', 'halfyearly': 'Halbjährlich', 'yearly': 'Jährlich' };
+
+        // Betrag formatieren
+        const formatAmount = (val) => val ? val.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €' : '';
+
+        // Datum formatieren
+        const formatDate = (val) => val ? new Date(val).toLocaleDateString('de-DE') : '';
+
         // Spalten-Daten mit Mapping (generische Spaltenbreiten)
         const colData = {
+            // Basis-Felder
             name: { class: 'col-name text-left', html: d.name },
             typ: { class: 'col-s text-center', html: `<span class="pill pill--${d.typ === 'nmg' ? 'neumitglied' : 'erhoehung'}">${d.typ === 'nmg' ? 'NMG' : 'ERH'}</span>` },
+            status: { class: 'col-s text-center', html: `<span class="pill pill--${d.status === 'aktiv' ? 'success' : d.status === 'storniert' ? 'error' : 'inaktiv'}">${d.status}</span>` },
             date: { class: 'col-m text-left', html: d.date },
             je: { class: 'col-s text-right', html: d.je },
             kunde: { class: 'col-m text-left', html: d.kunde || '' },
             gebiet: { class: 'col-m text-left', html: d.gebiet || '' },
             werber: { class: 'col-m text-left', html: d.werber || '' },
             teamchef: { class: 'col-m text-left', html: d.teamchef || '' },
+            // Adresse
             street: { class: 'col-m text-left', html: d.street || '' },
             houseNumber: { class: 'col-s text-left', html: d.houseNumber || '' },
             zipCode: { class: 'col-s text-left', html: d.zipCode || '' },
             city: { class: 'col-m text-left', html: d.city || '' },
+            country: { class: 'col-s text-left', html: d.country || '' },
+            // Kontakt
             email: { class: 'col-xl text-left', html: d.email || '' },
             phoneFixed: { class: 'col-m text-left', html: d.phoneFixed || '' },
             phoneMobile: { class: 'col-m text-left', html: d.phoneMobile || '' },
-            status: { class: 'col-s text-center', html: `<span class="pill pill--${d.status === 'aktiv' ? 'success' : d.status === 'storniert' ? 'error' : 'inaktiv'}">${d.status}</span>` }
+            // Persönliche Daten
+            salutation: { class: 'col-s text-left', html: d.salutation || '' },
+            title: { class: 'col-s text-left', html: d.title || '' },
+            company: { class: 'col-m text-left', html: d.company || '' },
+            birthDate: { class: 'col-m text-left', html: formatDate(d.birthDate) },
+            // Zahlungsdaten
+            iban: { class: 'col-xl text-left', html: d.iban || '' },
+            bic: { class: 'col-m text-left', html: d.bic || '' },
+            bankName: { class: 'col-m text-left', html: d.bankName || '' },
+            accountHolder: { class: 'col-m text-left', html: d.accountHolder || '' },
+            // Beiträge
+            amount: { class: 'col-s text-right', html: formatAmount(d.amount) },
+            interval: { class: 'col-s text-left', html: intervalLabels[d.interval] || d.interval || '' },
+            donationReceipt: { class: 'col-s text-center', html: d.donationReceipt ? '✓' : '' },
+            // Erhöhungs-spezifisch
+            memberNumber: { class: 'col-m text-left', html: d.memberNumber || '' },
+            memberSince: { class: 'col-m text-left', html: formatDate(d.memberSince) },
+            oldAmount: { class: 'col-s text-right', html: formatAmount(d.oldAmount) },
+            oldInterval: { class: 'col-s text-left', html: intervalLabels[d.oldInterval] || d.oldInterval || '' },
+            // Sonstiges
+            notes: { class: 'col-l text-left', html: d.notes || '' },
+            stornoDate: { class: 'col-m text-left', html: formatDate(d.stornoDate) },
+            stornoReason: { class: 'col-m text-left', html: d.stornoReason || '' }
         };
 
         // Spalten in konfigurierter Reihenfolge rendern
@@ -5167,14 +5257,84 @@ function isColumnVisible(type, colId) {
 // ========== VORLAGEN SYSTEM ==========
 const MAX_TEMPLATES = 3;
 
-// Vorlagen aus localStorage laden oder leer initialisieren
+// Vorlagen - werden aus Supabase geladen (Fallback: localStorage)
 let columnTemplates = {
-    records: JSON.parse(localStorage.getItem('columnTemplates_records') || '[]'),
-    bestand: JSON.parse(localStorage.getItem('columnTemplates_bestand') || '[]')
+    records: [],
+    bestand: []
 };
 
-function saveTemplatesToStorage(type) {
+// Aktueller User für Supabase-Speicherung
+let currentUserId = null;
+
+// Supabase-Client holen (von Parent-Frame oder global)
+function getSupabaseClient() {
+    return window.supabase || (window.parent && window.parent.supabaseClient) || null;
+}
+
+// Vorlagen aus Supabase laden
+async function loadTemplatesFromSupabase() {
+    const supabase = getSupabaseClient();
+    if (!supabase || !currentUserId) {
+        // Fallback: localStorage
+        columnTemplates.records = JSON.parse(localStorage.getItem('columnTemplates_records') || '[]');
+        columnTemplates.bestand = JSON.parse(localStorage.getItem('columnTemplates_bestand') || '[]');
+        return;
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('user_settings')
+            .select('setting_key, setting_value')
+            .eq('user_id', currentUserId)
+            .in('setting_key', ['columnTemplates_records', 'columnTemplates_bestand']);
+
+        if (error) throw error;
+
+        // Daten zuweisen
+        data?.forEach(row => {
+            if (row.setting_key === 'columnTemplates_records') {
+                columnTemplates.records = row.setting_value || [];
+            } else if (row.setting_key === 'columnTemplates_bestand') {
+                columnTemplates.bestand = row.setting_value || [];
+            }
+        });
+    } catch (err) {
+        console.warn('Fehler beim Laden der Vorlagen aus Supabase, nutze localStorage:', err);
+        columnTemplates.records = JSON.parse(localStorage.getItem('columnTemplates_records') || '[]');
+        columnTemplates.bestand = JSON.parse(localStorage.getItem('columnTemplates_bestand') || '[]');
+    }
+}
+
+// Vorlagen in Supabase speichern
+async function saveTemplatesToStorage(type) {
+    const supabase = getSupabaseClient();
+
+    // Immer auch in localStorage speichern (Backup)
     localStorage.setItem(`columnTemplates_${type}`, JSON.stringify(columnTemplates[type]));
+
+    if (!supabase || !currentUserId) return;
+
+    try {
+        const { error } = await supabase
+            .from('user_settings')
+            .upsert({
+                user_id: currentUserId,
+                setting_key: `columnTemplates_${type}`,
+                setting_value: columnTemplates[type]
+            }, {
+                onConflict: 'user_id,setting_key'
+            });
+
+        if (error) throw error;
+    } catch (err) {
+        console.warn('Fehler beim Speichern der Vorlagen in Supabase:', err);
+    }
+}
+
+// User-ID setzen und Vorlagen laden
+function initColumnTemplates(userId) {
+    currentUserId = userId;
+    loadTemplatesFromSupabase();
 }
 
 function renderTemplatesList() {
@@ -5403,6 +5563,8 @@ function exportTabellenFunctions() {
 // Immer verfügbare Funktionen (auf allen Seiten nutzbar)
 window.TableCheckbox = TableCheckbox;
 window.initDatensaetze = initDatensaetze;
+window.initColumnTemplates = initColumnTemplates;
+window.loadTemplatesFromSupabase = loadTemplatesFromSupabase;
 window.createTotalsNameCell = createTotalsNameCell;
 window.toggleDropdown = toggleDropdown;
 window.closeAllDropdowns = closeAllDropdowns;

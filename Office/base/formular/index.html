@@ -1705,6 +1705,11 @@ const streetResults = data.results.filter(result => {
             // Check required fields
             required.forEach(id => {
                 const field = document.getElementById(id);
+                if (!field) {
+                    console.warn(`Feld '${id}' nicht gefunden`);
+                    isValid = false;
+                    return;
+                }
                 if (!field.value) {
                     field.style.borderColor = '#ff4444';
                     isValid = false;
@@ -1727,44 +1732,47 @@ const streetResults = data.results.filter(result => {
             }
 
             // Check if "IBAN selbst ausfüllen" is active
-            const ibanLaterActive = document.getElementById('ibanLaterCheck').style.display !== 'none';
+            const ibanLaterCheckEl = document.getElementById('ibanLaterCheck');
+            const ibanLaterActive = ibanLaterCheckEl ? ibanLaterCheckEl.style.display !== 'none' : false;
             
             // Payment field validation depends on mode (NMG vs ERH)
             if (!ibanLaterActive) {
                 // Always check Kontoinhaber (both NMG and ERH)
                 const accountHolder = document.getElementById('accountHolder');
-                if (!accountHolder.value) {
+                if (accountHolder && !accountHolder.value) {
                     accountHolder.style.borderColor = '#ff4444';
                     isValid = false;
                     if (!firstError) firstError = accountHolder;
-                } else {
+                } else if (accountHolder) {
                     accountHolder.style.borderColor = '#e0e0e0';
                 }
-                
+
                 if (isERHMode && selectedMember) {
                     // ERH Mode: Only validate last 4 digits of IBAN
-                    const ibanInput = document.getElementById('iban').value.replace(/\s/g, '');
+                    const ibanEl = document.getElementById('iban');
+                    const ibanInput = ibanEl ? ibanEl.value.replace(/\s/g, '') : '';
                     const storedIbanLast4 = selectedMember.iban.slice(-4);
                     
                     if (!ibanInput || ibanInput.length !== 4) {
-                        document.getElementById('iban').style.borderColor = '#ff4444';
+                        if (ibanEl) ibanEl.style.borderColor = '#ff4444';
                         isValid = false;
-                        if (!firstError) firstError = document.getElementById('iban');
+                        if (!firstError) firstError = ibanEl;
                     } else if (ibanInput !== storedIbanLast4) {
-                        document.getElementById('iban').style.borderColor = '#ff4444';
+                        if (ibanEl) ibanEl.style.borderColor = '#ff4444';
                         alert('❌ Die eingegebenen IBAN-Ziffern stimmen nicht überein.');
                         isValid = false;
-                        if (!firstError) firstError = document.getElementById('iban');
+                        if (!firstError) firstError = ibanEl;
                     } else {
-                        document.getElementById('iban').style.borderColor = '#e0e0e0';
+                        if (ibanEl) ibanEl.style.borderColor = '#e0e0e0';
                     }
-                    
+
                     // Bank and BIC are pre-filled in ERH, not validated as required
                 } else {
                     // NMG Mode: Validate full payment fields
                     const paymentFields = ['iban', 'bankName', 'bic'];
                     paymentFields.forEach(id => {
                         const field = document.getElementById(id);
+                        if (!field) return;
                         if (!field.value) {
                             field.style.borderColor = '#ff4444';
                             isValid = false;
@@ -1775,20 +1783,22 @@ const streetResults = data.results.filter(result => {
                     });
 
                     // Extra IBAN validation (length check) for NMG
-                    const iban = document.getElementById('iban').value.replace(/\s/g, '');
-                    if (iban && iban.length !== 22) {
-                        document.getElementById('iban').style.borderColor = '#ff4444';
+                    const ibanFieldNMG = document.getElementById('iban');
+                    const ibanValueNMG = ibanFieldNMG ? ibanFieldNMG.value.replace(/\s/g, '') : '';
+                    if (ibanValueNMG && ibanValueNMG.length !== 22) {
+                        if (ibanFieldNMG) ibanFieldNMG.style.borderColor = '#ff4444';
                         isValid = false;
                     }
                 }
             }
 
             // Check amount/interval selection
-            const individualAmount = document.getElementById('individualAmount');
+            const individualAmountEl = document.getElementById('individualAmount');
             const activeAmount = document.querySelector('.amount-btn.active');
-            const customAmount = document.getElementById('customAmount').value;
-            
-            if (individualAmount.classList.contains('hidden')) {
+            const customAmountEl = document.getElementById('customAmount');
+            const customAmountVal = customAmountEl ? customAmountEl.value : '';
+
+            if (!individualAmountEl || individualAmountEl.classList.contains('hidden')) {
                 // Standard mode: check if any button is selected
                 if (!activeAmount) {
                     alert('❌ Bitte wählen Sie einen Unterstützungsbeitrag aus.');
@@ -1796,33 +1806,40 @@ const streetResults = data.results.filter(result => {
                 }
             } else {
                 // Individual mode: check if amount is entered
-                if (!customAmount || parseFloat(customAmount) <= 0) {
-                    document.getElementById('customAmount').style.borderColor = '#ff4444';
+                if (!customAmountVal || parseFloat(customAmountVal) <= 0) {
+                    if (customAmountEl) customAmountEl.style.borderColor = '#ff4444';
                     alert('❌ Bitte geben Sie einen Unterstützungsbeitrag ein.');
                     isValid = false;
-                    if (!firstError) firstError = document.getElementById('customAmount');
+                    if (!firstError) firstError = customAmountEl;
                 } else {
-                    document.getElementById('customAmount').style.borderColor = '#e0e0e0';
+                    if (customAmountEl) customAmountEl.style.borderColor = '#e0e0e0';
                 }
             }
 
             // Check consents
             const consents = ['consent1', 'consent2', 'consent3'];
             consents.forEach(id => {
-                if (!document.getElementById(id).checked) {
+                const consentEl = document.getElementById(id);
+                if (consentEl && !consentEl.checked) {
                     isValid = false;
                 }
             });
 
             // Check signature
             const canvas = document.getElementById('signatureCanvas');
-            const ctx = canvas.getContext('2d');
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const hasSignature = imageData.data.some(channel => channel !== 0 && channel !== 255);
-
-            if (!hasSignature) {
-                document.querySelector('.signature-pad').style.borderColor = '#ff4444';
+            if (!canvas) {
+                console.warn('signatureCanvas nicht gefunden');
                 isValid = false;
+            } else {
+                const ctx = canvas.getContext('2d');
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const hasSignature = imageData.data.some(channel => channel !== 0 && channel !== 255);
+
+                if (!hasSignature) {
+                    const sigPad = document.querySelector('.signature-pad');
+                    if (sigPad) sigPad.style.borderColor = '#ff4444';
+                    isValid = false;
+                }
             }
 
             if (isValid) {
@@ -1842,6 +1859,10 @@ const streetResults = data.results.filter(result => {
 
         async function submitForm() {
             const btn = document.getElementById('validateBtn');
+            if (!btn) {
+                console.error('validateBtn nicht gefunden');
+                return;
+            }
             btn.disabled = true;
             btn.innerHTML = 'Wird übermittelt... <span class="loading"></span>';
 
@@ -1855,7 +1876,7 @@ const streetResults = data.results.filter(result => {
             const individualAmount = document.getElementById('individualAmount');
 
             let amount = 10; // Default
-            if (!individualAmount.classList.contains('hidden') && customAmountField.value) {
+            if (individualAmount && !individualAmount.classList.contains('hidden') && customAmountField?.value) {
                 amount = parseFloat(customAmountField.value);
             } else if (activeAmount) {
                 // Button-Wert ist der Monatsbetrag

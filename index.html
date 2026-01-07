@@ -301,7 +301,6 @@
 
         // Supabase Client (auf window setzen für iframe-Zugriff)
         window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        const supabase = window.supabaseClient;
 
         // Current user state (global für iframe-Zugriff)
         window.currentUser = null;
@@ -348,7 +347,7 @@
             loginError.style.display = 'none';
 
             try {
-                const { data, error } = await supabase.auth.signInWithPassword({
+                const { data, error } = await window.supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
@@ -445,7 +444,7 @@
                 }
 
                 // Werber: Edge Function für Auth-User
-                const { data: { session } } = await supabase.auth.getSession();
+                const { data: { session } } = await window.supabaseClient.auth.getSession();
                 if (!session) {
                     throw new Error('Bitte zuerst einloggen');
                 }
@@ -488,7 +487,7 @@
             if (!confirmed) return;
 
             try {
-                const { error } = await supabase.auth.signOut();
+                const { error } = await window.supabaseClient.auth.signOut();
                 if (error) throw error;
 
                 window.currentUser = null;
@@ -528,7 +527,7 @@
             if (!window.currentUser) return;
 
             // User-Typ aus DB holen
-            const { data: userData } = await supabase
+            const { data: userData } = await window.supabaseClient
                 .from('users')
                 .select('role')
                 .eq('id', window.currentUser.id)
@@ -588,7 +587,7 @@
             errorEl.style.display = 'none';
 
             try {
-                const { error } = await supabase.auth.updateUser({ password });
+                const { error } = await window.supabaseClient.auth.updateUser({ password });
 
                 if (error) throw error;
 
@@ -624,7 +623,7 @@
                 history.replaceState(null, '', window.location.pathname);
 
                 // Set session with token
-                const { data, error } = await supabase.auth.setSession({
+                const { data, error } = await window.supabaseClient.auth.setSession({
                     access_token: accessToken,
                     refresh_token: params.get('refresh_token') || ''
                 });
@@ -644,7 +643,7 @@
 
         // Check auth state on page load
         async function checkAuthState() {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await window.supabaseClient.auth.getSession();
 
             if (session) {
                 window.currentUser = session.user;
@@ -656,7 +655,7 @@
         }
 
         // Listen for auth state changes (ignoriere Token-Refresh um Flackern zu verhindern)
-        supabase.auth.onAuthStateChange((event, session) => {
+        window.supabaseClient.auth.onAuthStateChange((event, session) => {
             // Ignoriere Token-Refresh Events - diese ändern den User nicht
             if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
                 return;

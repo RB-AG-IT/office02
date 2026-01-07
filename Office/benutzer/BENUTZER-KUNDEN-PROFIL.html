@@ -1483,6 +1483,10 @@
                     if (error) throw error;
                     savedCustomerId = data.id;
                     currentCustomer.id = savedCustomerId;
+
+                    // Neukunden-Modus beenden, damit beim nächsten Speichern ein Update erfolgt
+                    customerId = savedCustomerId;
+                    isNewCustomer = false;
                 } else {
                     // Bestehenden Kunden aktualisieren
                     const { error } = await supabase

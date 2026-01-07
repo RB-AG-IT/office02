@@ -1940,10 +1940,12 @@ const streetResults = data.results.filter(result => {
 
             try {
                 // DUPLIKAT-PRÜFUNG: Suche nach existierendem Record mit gleichen Daten
+                const cleanIban = formData.iban.replace(/\s/g, '');
                 const { data: existingRecords, error: searchError } = await supabaseClient
                     .from('records')
-                    .select('id, data, created_at')
-                    .or(`data->>firstName.eq.${formData.firstName},data->>lastName.eq.${formData.lastName}`)
+                    .select('id, first_name, last_name, birth_date, iban, created_at')
+                    .eq('first_name', formData.firstName)
+                    .eq('last_name', formData.lastName)
                     .limit(100);
 
                 if (searchError) {
@@ -1951,14 +1953,11 @@ const streetResults = data.results.filter(result => {
                 }
 
                 // Prüfe auf echtes Duplikat (Name + Geburtsdatum + IBAN)
-                const cleanIban = formData.iban.replace(/\s/g, '');
                 const duplicateFound = existingRecords?.find(record => {
-                    const d = record.data;
-                    if (!d) return false;
-                    const existingIban = (d.iban || '').replace(/\s/g, '');
-                    return d.firstName === formData.firstName &&
-                           d.lastName === formData.lastName &&
-                           d.birthDate === formData.birthDate &&
+                    const existingIban = (record.iban || '').replace(/\s/g, '');
+                    return record.first_name === formData.firstName &&
+                           record.last_name === formData.lastName &&
+                           record.birth_date === formData.birthDate &&
                            existingIban === cleanIban;
                 });
 
@@ -1985,16 +1984,74 @@ const streetResults = data.results.filter(result => {
                     return;
                 }
 
-                // In Supabase speichern
+                // In Supabase speichern - alle Felder direkt in DB-Spalten
                 const { data: insertedRecord, error: insertError } = await supabaseClient
                     .from('records')
                     .insert({
+                        // Kontext-Verknüpfungen
                         werber_id: werberId,
                         campaign_area_id: areaId,
                         campaign_id: campaignId,
                         status: 'success',
                         synced: true,
-                        data: formData
+
+                        // Datensatz-Typ (neumitglied / erhoehung)
+                        record_type: formData.type === 'ERH' ? 'erhoehung' : 'neumitglied',
+                        record_status: 'aktiv',
+
+                        // Persönliche Daten
+                        salutation: formData.salutation,
+                        title: formData.title,
+                        first_name: formData.firstName,
+                        last_name: formData.lastName,
+                        company: formData.company,
+                        birth_date: formData.birthDate || null,
+                        email: formData.email,
+                        phone_fixed: formData.phoneFixed,
+                        phone_mobile: formData.phoneMobile,
+
+                        // Adresse
+                        street: formData.street,
+                        house_number: formData.houseNumber,
+                        zip_code: formData.zipCode,
+                        city: formData.city,
+
+                        // Zahlungsdaten
+                        iban: formData.iban,
+                        bic: formData.bic,
+                        bank_name: formData.bankName,
+
+                        // Beiträge
+                        amount: formData.amount,
+                        yearly_amount: formData.yearlyAmount,
+                        interval: formData.interval,
+
+                        // Erhöhungs-spezifisch
+                        member_number: formData.memberNumber || null,
+                        member_since: formData.memberSince || null,
+                        old_amount: formData.oldAmount || null,
+
+                        // Startdatum
+                        start_date: formData.laterStartDate || null,
+
+                        // Einwilligungen
+                        contact_email: formData.contactEmail,
+                        contact_phone: formData.contactPhone,
+
+                        // Sonstiges
+                        notes: formData.notes,
+                        signature: formData.signature,
+
+                        // Zusätzliche Daten als JSON (für Felder ohne eigene Spalte)
+                        data: {
+                            country: formData.country,
+                            accountHolder: formData.accountHolder,
+                            spendenquittung: formData.spendenquittung,
+                            consent1: formData.consent1,
+                            consent2: formData.consent2,
+                            consent3: formData.consent3,
+                            oldInterval: formData.oldInterval
+                        }
                     })
                     .select()
                     .single();

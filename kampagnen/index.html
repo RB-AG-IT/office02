@@ -1008,21 +1008,10 @@
                             </div>
                         </div>
 
-                        <!-- Zur Kampagne hinzugefügte WGs (für ausgewählten Kunden) -->
-                        <div class="unterabschnitt--card unterabschnitt--card--no-border" id="wgAddedSection" style="display: none;">
-                            <div class="eingabefeld-gruppe eingabefeld-gruppe--mit-aktion">
-                                <label class="eingabefeld-beschriftung-oben">In Kampagne (Kunde)</label>
-                                <span class="badge-zaehler" id="wgAddedCount">0</span>
-                            </div>
-                            <div id="wgAddedList">
-                                <!-- Wird dynamisch befüllt mit anzeigenfeld--card -->
-                            </div>
-                        </div>
-
-                        <!-- Alle Werbegebiete in der Kampagne -->
+                        <!-- Ausgewählte Werbegebiete in der Kampagne -->
                         <div class="unterabschnitt--card unterabschnitt--card--no-border" id="wgAllSection" style="display: none;">
                             <div class="eingabefeld-gruppe eingabefeld-gruppe--mit-aktion">
-                                <label class="eingabefeld-beschriftung-oben">Alle Werbegebiete</label>
+                                <label class="eingabefeld-beschriftung-oben">Ausgewählte Werbegebiete</label>
                                 <span class="badge-zaehler" id="wgAllCount">0</span>
                             </div>
                             <div id="wgAllList">
@@ -1914,7 +1903,6 @@ function initCampaignWerbegebiete(campaign) {
     const kundeSelect = document.getElementById('wgKundeSelect');
     if (kundeSelect) kundeSelect.value = '';
     document.getElementById('wgListSection').style.display = 'none';
-    document.getElementById('wgAddedSection').style.display = 'none';
 
     // Default KWs für die Kampagne
     const defaultKws = [];
@@ -2363,10 +2351,8 @@ async function onKundeSelectChange() {
 
         document.getElementById('wgListSection').style.display = 'block';
         renderAvailableWerbegebiete();
-        updateAddedWgList();
     } else {
         document.getElementById('wgListSection').style.display = 'none';
-        document.getElementById('wgAddedSection').style.display = 'none';
         document.getElementById('wgConfigPanel').style.display = 'none';
     }
 }
@@ -2471,7 +2457,7 @@ async function addWgToCampaign(wgId) {
         campaignWerbegebiete.push(wgConfig);
 
         renderAvailableWerbegebiete();
-        updateAddedWgList();
+        renderAllCampaignWerbegebiete();
 
         // Direkt zur Konfiguration öffnen und im Edit-Modus starten
         openWgConfig(newArea.id);
@@ -2495,52 +2481,6 @@ function getKundeName(kundeId) {
         .join(' ')
         .trim();
     return fullName || kunde.name || 'Unbenannt';
-}
-
-// Hinzugefügte WG Liste updaten
-function updateAddedWgList() {
-    const section = document.getElementById('wgAddedSection');
-    const container = document.getElementById('wgAddedList');
-    const countBadge = document.getElementById('wgAddedCount');
-
-    // Nur WGs des aktuell ausgewählten Kunden anzeigen
-    const kundenWgs = campaignWerbegebiete.filter(wg => wg.kunde === selectedWgKunde);
-
-    if (kundenWgs.length === 0) {
-        section.style.display = 'none';
-    } else {
-        section.style.display = 'block';
-        countBadge.textContent = kundenWgs.length;
-
-        container.innerHTML = kundenWgs.map(wg => {
-            const wgInitials = getInitials(wg.name);
-            const isActive = activeWgConfig === wg.id;
-            return `
-                <div class="anzeigenfeld anzeigenfeld--card ${isActive ? 'active' : ''}">
-                    <div class="anzeigenfeld--card-main" onclick="openWgConfig('${wg.id}')">
-                        <div class="user-badge user-badge--werbegebiet user-badge--small">
-                            <div class="user-badge__avatar">${wgInitials}</div>
-                            <div class="user-badge__info">
-                                <span class="user-badge__name">${wg.name}</span>
-                                <span class="user-badge__type">Werbegebiet</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="anzeigenfeld--card-actions">
-                        <button class="btn btn-sm btn--hover-blau" onclick="event.stopPropagation(); openFormularLink('${wg.id}')" title="Formular öffnen">
-                            <span class="icon icon--dokument"></span>
-                        </button>
-                        <button class="btn btn-sm btn--hover-blau" onclick="event.stopPropagation(); copyFormularLink('${wg.id}')" title="Link kopieren">
-                            <span class="icon icon--clipboard"></span>
-                        </button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    // Auch die Gesamtliste aktualisieren
-    renderAllCampaignWerbegebiete();
 }
 
 // Formular-Link für Werbegebiet generieren
@@ -2723,8 +2663,8 @@ function openWgConfig(wgId) {
     // Verträge laden
     loadKundenVertraege(wg.kunde, wg.rahmenvertrag, wg.avv);
 
-    // Added List aktualisieren für active state
-    updateAddedWgList();
+    // Liste aktualisieren für active state
+    renderAllCampaignWerbegebiete();
 
     // Standardmäßig im Read-Modus starten
     setWgConfigEditable(false);
@@ -3069,7 +3009,7 @@ async function removeWgFromCampaign() {
         document.getElementById('wgConfigPlaceholder').style.display = 'flex';
 
         renderAvailableWerbegebiete();
-        updateAddedWgList();
+        renderAllCampaignWerbegebiete();
 
         showToast(`${wg.name} entfernt`, 'success');
 

@@ -1037,11 +1037,13 @@ input[type="radio"][name="type"]:checked::after {
                     const footerKundeName = document.getElementById('footerKundeName');
                     const datenschutzLink = document.getElementById('datenschutzLink');
 
+                    let privacyPolicyUrl = null;
+
                     // Customer Area laden (Stammdaten: Name, Adresse, Datenschutz)
                     if (area.customer_area_id) {
                         const { data: customerArea } = await supabaseClient
                             .from('customer_areas')
-                            .select('name, street, house_number, postal_code, city, privacy_policy')
+                            .select('name, street, house_number, postal_code, city, privacy_policy, customer_id')
                             .eq('id', area.customer_area_id)
                             .single();
 
@@ -1065,9 +1067,21 @@ input[type="radio"][name="type"]:checked::after {
                                 verbandAdresse.textContent = adresse || '';
                             }
 
-                            // Datenschutzlink setzen
-                            if (datenschutzLink && customerArea.privacy_policy) {
-                                datenschutzLink.href = customerArea.privacy_policy;
+                            // Datenschutzlink: Erst vom Werbegebiet
+                            if (customerArea.privacy_policy) {
+                                privacyPolicyUrl = customerArea.privacy_policy;
+                            }
+                            // Fallback: Vom Kunden laden
+                            else if (customerArea.customer_id) {
+                                const { data: customer } = await supabaseClient
+                                    .from('customers')
+                                    .select('privacy_policy')
+                                    .eq('id', customerArea.customer_id)
+                                    .single();
+
+                                if (customer && customer.privacy_policy) {
+                                    privacyPolicyUrl = customer.privacy_policy;
+                                }
                             }
                         }
                     } else {
@@ -1075,6 +1089,18 @@ input[type="radio"][name="type"]:checked::after {
                         if (area.name) {
                             if (verbandName) verbandName.textContent = area.name;
                             if (footerKundeName) footerKundeName.textContent = area.name;
+                        }
+                    }
+
+                    // Datenschutzlink setzen oder deaktivieren
+                    if (datenschutzLink) {
+                        if (privacyPolicyUrl) {
+                            datenschutzLink.href = privacyPolicyUrl;
+                        } else {
+                            datenschutzLink.removeAttribute('href');
+                            datenschutzLink.style.pointerEvents = 'none';
+                            datenschutzLink.style.color = 'inherit';
+                            datenschutzLink.style.textDecoration = 'none';
                         }
                     }
                 }

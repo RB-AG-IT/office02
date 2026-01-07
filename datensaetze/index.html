@@ -188,7 +188,7 @@
         // Lookup-Maps für Namen
         let usersMap = {};      // user_id -> name
         let customersMap = {};  // customer_id -> name
-        let areasMap = {};      // area_id -> ort
+        let areasMap = {};      // campaign_area_id -> name
 
         // ========== SUPABASE DATA LOADING ==========
         async function loadAllData() {
@@ -246,8 +246,8 @@
         // Werbegebiete laden (für Gebiet Namen)
         async function loadAreas() {
             const { data, error } = await supabase
-                .from('werbegebiete')
-                .select('id, ort, plz');
+                .from('campaign_areas')
+                .select('id, name, plz');
 
             if (error) {
                 console.error('Fehler beim Laden der Werbegebiete:', error);
@@ -256,7 +256,7 @@
 
             areasMap = {};
             (data || []).forEach(a => {
-                areasMap[a.id] = `${a.ort} (${a.plz})`;
+                areasMap[a.id] = a.plz ? `${a.name} (${a.plz})` : a.name;
             });
         }
 
@@ -307,7 +307,7 @@
                 je: jeFormatted,
                 jeValue: je,
                 kunde: customersMap[r.customer_id] || '-',
-                gebiet: areasMap[r.area_id] || '-',
+                gebiet: areasMap[r.campaign_area_id] || '-',
                 werber: usersMap[r.werber_id] || '-',
                 teamchef: usersMap[r.teamchef_id] || '-',
                 street: r.street || '',

@@ -1124,7 +1124,7 @@
                                     <span class="icon icon--dokument"></span>
                                     Datensätze
                                 </div>
-                                <div class="dropdown-item" onclick="closeAllDropdowns(); openWerberDashboard('${werber.id}', '${werber.name}')">
+                                <div class="dropdown-item" onclick="closeAllDropdowns(); openWerberDashboard('${werber.id}', '${werber.name.replace(/'/g, "\\'")}')">
                                     <span class="icon icon--statistik"></span>
                                     Persönliches Dashboard
                                 </div>
@@ -1196,7 +1196,7 @@
                                     <span class="icon icon--dokument"></span>
                                     Datensätze
                                 </div>
-                                <div class="dropdown-item" onclick="closeAllDropdowns(); openKundeDashboard('${kunde.id}', '${kunde.name}')">
+                                <div class="dropdown-item" onclick="closeAllDropdowns(); openKundeDashboard('${kunde.id}', '${kunde.name.replace(/'/g, "\\'")}')">
                                     <span class="icon icon--statistik"></span>
                                     Persönliches Dashboard
                                 </div>
@@ -1235,7 +1235,7 @@
                                     <span class="icon icon--dokument"></span>
                                     Datensätze
                                 </div>
-                                <div class="dropdown-item" onclick="closeAllDropdowns(); openGebietDashboard('${gebiet.id}', '${gebiet.name}')">
+                                <div class="dropdown-item" onclick="closeAllDropdowns(); openGebietDashboard('${gebiet.id}', '${gebiet.name.replace(/'/g, "\\'")}')">
                                     <span class="icon icon--statistik"></span>
                                     Persönliches Dashboard
                                 </div>
@@ -1340,7 +1340,7 @@
                                     <span class="icon icon--dokument"></span>
                                     Datensätze
                                 </div>
-                                <div class="dropdown-item" onclick="closeAllDropdowns(); openKampagneDashboard('${kampagne.id}', '${kampagne.name}')">
+                                <div class="dropdown-item" onclick="closeAllDropdowns(); openKampagneDashboard('${kampagne.id}', '${kampagne.name.replace(/'/g, "\\'")}')">
                                     <span class="icon icon--statistik"></span>
                                     Persönliches Dashboard
                                 </div>
@@ -1378,7 +1378,7 @@
                                     <span class="icon icon--dokument"></span>
                                     Datensätze
                                 </div>
-                                <div class="dropdown-item" onclick="closeAllDropdowns(); openGebietDashboard('${gebiet.id}', '${gebiet.name}')">
+                                <div class="dropdown-item" onclick="closeAllDropdowns(); openGebietDashboard('${gebiet.id}', '${gebiet.name.replace(/'/g, "\\'")}')">
                                     <span class="icon icon--statistik"></span>
                                     Persönliches Dashboard
                                 </div>

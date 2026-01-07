@@ -1028,6 +1028,7 @@
 
             const preview = `${org} ${typPrefix} ${vereinsname}${rechtsform ? ' ' + rechtsform : ''}`;
             document.getElementById('areaNamePreview').textContent = preview;
+            document.getElementById('areaFullNamePreview').textContent = preview;
         }
 
         function openAddAreaModal(type = 'kreisverband') {
@@ -1185,7 +1186,12 @@
 
             // Vereinstyp aus currentAreaType ableiten
             const vereinstyp = currentAreaType === 'ortsverein' ? 'OV' : 'KV';
-            const name = vereinsname;
+
+            // Vollständigen Namen zusammensetzen (z.B. "DRK KV Ludwigshafen e.V.")
+            const org = document.getElementById('organisation').value || 'DRK';
+            const typPrefix = vereinstyp === 'OV' ? 'OV' : 'KV';
+            const rechtsform = document.getElementById('nameSuffix').value || '';
+            const name = `${org} ${typPrefix} ${vereinsname}${rechtsform ? ' ' + rechtsform : ''}`;
 
             const kvZuordnungSelect = document.getElementById('areaKvZuordnung');
             const kvZuordnungValue = kvZuordnungSelect ? kvZuordnungSelect.value : '';
@@ -1753,7 +1759,7 @@
                         <div class="eingabefeld-gruppe eingabefeld-gruppe--flex-2">
                             <label class="eingabefeld-beschriftung-oben">Vereinsname *</label>
                             <input type="text" class="eingabefeld" id="areaVereinsname" placeholder="z.B. Ludwigshafen" oninput="updateAreaNamePreview()">
-                            <span class="eingabefeld-beschriftung-unten"></span>
+                            <span class="eingabefeld-beschriftung-unten" id="areaFullNamePreview">DRK KV ... e.V.</span>
                         </div>
                         <div class="eingabefeld-gruppe eingabefeld-gruppe--flex-0-5">
                             <label class="eingabefeld-beschriftung-oben">Einwohner</label>

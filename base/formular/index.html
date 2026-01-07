@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DRK Fördermitgliedschaft</title>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -580,15 +582,12 @@ input[type="radio"][name="type"]:checked::after {
     <img src="logo.png" width="200" height="auto" alt="Logo" style="display: block; max-height: 100px; object-fit: contain;">
 </div>
                 <div class="werber-info">
-                    <div class="werber-bild" id="werberBild" style="background: white; overflow: hidden;">
-                        <img id="werberFoto" src="" alt="Werber" style="width: 100%; height: 100%; object-fit: cover; display: none;">
-                        <span id="werberPlaceholder">Foto</span>
-                    </div>
-                    <div class="werber-name" id="werberName">-</div>
+                    <div class="werber-bild" style="background: white;">Foto</div>
+                    <div class="werber-name">Max</div>
                 </div>
             </div>
-            <div class="verband-name" id="verbandName">DRK Kreisverband Musterstadt</div>
-            <div class="verband-adresse" id="verbandAdresse">Musterstraße 123, 12345 Musterstadt</div>
+            <div class="verband-name">DRK Kreisverband Musterstadt</div>
+            <div class="verband-adresse">Musterstraße 123, 12345 Musterstadt</div>
         </div>
         
         <!-- Gruppenbild -->
@@ -913,264 +912,14 @@ input[type="radio"][name="type"]:checked::after {
 
             <!-- Footer -->
             <div class="footer-text">
-                Mit dem Absenden wird bestätigt, dass die DSGVO-konforme
-                <a href="#" id="datenschutzLink" target="_blank" style="color: #667eea;">Datenschutzerklärung</a>
-                des <span id="footerKundeName">DRK Kreisverband</span> zur Kenntnis genommen und akzeptiert wurde.
+                Mit dem Absenden wird bestätigt, dass die DSGVO-konforme 
+                <a href="#" style="color: #667eea;">Datenschutzerklärung</a> 
+                des DRK Kreisverband Musterstadt zur Kenntnis genommen und akzeptiert wurde.
             </div>
         </form>
     </div>
 
-    <!-- Supabase Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <script>
-        // ================================================================
-        // SUPABASE CONFIGURATION
-        // ================================================================
-        const SUPABASE_URL = 'https://lgztglycqtiwcmiydxnm.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnenRnbHljcXRpd2NtaXlkeG5tIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzgwNzYxNSwiZXhwIjoyMDc5MzgzNjE1fQ.54kSk9ZSUdQt6LKYWkblqgR6Sjev80W80qkNHYEbPgk';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // ================================================================
-        // URL PARAMETER HANDLING
-        // ================================================================
-        const urlParams = new URLSearchParams(window.location.search);
-        const formContext = {
-            campaign_id: urlParams.get('kampagne') || urlParams.get('campaign'),
-            campaign_area_id: urlParams.get('werbegebiet') || urlParams.get('wg') || urlParams.get('area'),
-            botschafter_id: urlParams.get('botschafter') || urlParams.get('werber'),
-            teamchef_id: null,
-            quality_id: null,
-            customer_id: null,
-            kw: null,
-            year: null
-        };
-
-        // Aktuelle KW und Jahr berechnen
-        function getCurrentKW() {
-            const now = new Date();
-            const startOfYear = new Date(now.getFullYear(), 0, 1);
-            const days = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000));
-            return Math.ceil((days + startOfYear.getDay() + 1) / 7);
-        }
-
-        formContext.kw = parseInt(urlParams.get('kw')) || getCurrentKW();
-        formContext.year = parseInt(urlParams.get('year')) || new Date().getFullYear();
-
-        // Botschafter-Daten laden (Foto + Name) - unabhängig von Kampagne
-        async function loadBotschafterData() {
-            console.log('Loading Botschafter, ID:', formContext.botschafter_id);
-            if (!formContext.botschafter_id) {
-                console.warn('Keine Botschafter-ID in URL');
-                return;
-            }
-
-            try {
-                const { data: profile } = await supabaseClient
-                    .from('user_profiles')
-                    .select('first_name, last_name, photo_extern_url')
-                    .eq('user_id', formContext.botschafter_id)
-                    .single();
-
-                console.log('Botschafter profile loaded:', profile);
-
-                if (profile) {
-                    // Name anzeigen
-                    const werberName = document.getElementById('werberName');
-                    if (werberName) {
-                        werberName.textContent = profile.first_name || '-';
-                    }
-
-                    // Externes Foto anzeigen
-                    console.log('Photo URL:', profile.photo_extern_url);
-                    if (profile.photo_extern_url) {
-                        const werberFoto = document.getElementById('werberFoto');
-                        const werberPlaceholder = document.getElementById('werberPlaceholder');
-                        if (werberFoto && werberPlaceholder) {
-                            werberFoto.src = profile.photo_extern_url;
-                            werberFoto.style.display = 'block';
-                            werberPlaceholder.style.display = 'none';
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Fehler beim Laden des Botschafters:', error);
-            }
-        }
-
-        // Kontext laden (Teamchef, Quality, Customer aus Kampagne/Area)
-        async function loadFormContext() {
-            // Botschafter immer laden (auch ohne Kampagne)
-            await loadBotschafterData();
-
-            if (!formContext.campaign_id || !formContext.campaign_area_id) {
-                console.warn('Keine Kampagne oder Werbegebiet in URL');
-                return;
-            }
-
-            try {
-                // Assignment für aktuelle KW laden (Teamchef, Quality)
-                const { data: assignment } = await supabaseClient
-                    .from('campaign_assignments')
-                    .select('teamchef_id, quality_manager_id')
-                    .eq('campaign_id', formContext.campaign_id)
-                    .eq('kw', formContext.kw)
-                    .single();
-
-                if (assignment) {
-                    formContext.teamchef_id = assignment.teamchef_id;
-                    formContext.quality_id = assignment.quality_manager_id;
-                }
-
-                // Campaign Area laden (mit Referenz auf customer_areas)
-                const { data: area, error: areaError } = await supabaseClient
-                    .from('campaign_areas')
-                    .select('*, customer_area_id')
-                    .eq('id', formContext.campaign_area_id)
-                    .single();
-
-                console.log('Campaign Area loaded:', area, areaError);
-
-                if (area) {
-                    const verbandName = document.getElementById('verbandName');
-                    const verbandAdresse = document.getElementById('verbandAdresse');
-                    const footerKundeName = document.getElementById('footerKundeName');
-                    const datenschutzLink = document.getElementById('datenschutzLink');
-
-                    let privacyPolicyUrl = null;
-
-                    // Customer Area laden (Stammdaten: Name, Adresse, Datenschutz)
-                    if (area.customer_area_id) {
-                        const { data: customerArea } = await supabaseClient
-                            .from('customer_areas')
-                            .select('name, street, house_number, postal_code, city, privacy_policy, customer_id')
-                            .eq('id', area.customer_area_id)
-                            .single();
-
-                        console.log('Customer Area loaded:', customerArea);
-
-                        if (customerArea) {
-                            // Name anzeigen
-                            if (customerArea.name) {
-                                if (verbandName) verbandName.textContent = customerArea.name;
-                                if (footerKundeName) footerKundeName.textContent = customerArea.name;
-                            }
-
-                            // Adresse anzeigen
-                            if (verbandAdresse) {
-                                const adresse = [
-                                    customerArea.street,
-                                    customerArea.house_number || '',
-                                    customerArea.postal_code ? `, ${customerArea.postal_code}` : '',
-                                    customerArea.city || ''
-                                ].filter(Boolean).join(' ').replace(' ,', ',');
-                                verbandAdresse.textContent = adresse || '';
-                            }
-
-                            // Datenschutzlink: Erst vom Werbegebiet
-                            if (customerArea.privacy_policy) {
-                                privacyPolicyUrl = customerArea.privacy_policy;
-                            }
-                            // Fallback: Vom Kunden laden
-                            else if (customerArea.customer_id) {
-                                const { data: customer } = await supabaseClient
-                                    .from('customers')
-                                    .select('privacy_policy')
-                                    .eq('id', customerArea.customer_id)
-                                    .single();
-
-                                if (customer && customer.privacy_policy) {
-                                    privacyPolicyUrl = customer.privacy_policy;
-                                }
-                            }
-                        }
-                    } else {
-                        // Fallback: Name aus campaign_areas verwenden
-                        if (area.name) {
-                            if (verbandName) verbandName.textContent = area.name;
-                            if (footerKundeName) footerKundeName.textContent = area.name;
-                        }
-                    }
-
-                    // Datenschutzlink setzen oder deaktivieren
-                    if (datenschutzLink) {
-                        if (privacyPolicyUrl) {
-                            datenschutzLink.href = privacyPolicyUrl;
-                        } else {
-                            datenschutzLink.removeAttribute('href');
-                            datenschutzLink.style.pointerEvents = 'none';
-                            datenschutzLink.style.color = 'inherit';
-                            datenschutzLink.style.textDecoration = 'none';
-                        }
-                    }
-
-                    // Formular-Einstellungen anwenden (ERH + Zahlungsmodalitäten)
-                    applyFormSettings(area);
-                }
-
-                console.log('Form context loaded:', formContext);
-
-            } catch (error) {
-                console.error('Fehler beim Laden des Kontexts:', error);
-            }
-        }
-
-        // Formular-Einstellungen basierend auf campaign_area anwenden
-        function applyFormSettings(area) {
-            // ERH deaktivieren wenn nicht erlaubt
-            const erhRadio = document.querySelector('input[name="type"][value="ERH"]');
-            const erhLabel = erhRadio?.closest('label');
-
-            if (area.erhohungen_enabled === false) {
-                if (erhRadio) {
-                    erhRadio.disabled = true;
-                }
-                if (erhLabel) {
-                    erhLabel.style.opacity = '0.4';
-                    erhLabel.style.pointerEvents = 'none';
-                    erhLabel.style.cursor = 'not-allowed';
-                    erhLabel.title = 'Erhöhungen sind für dieses Einsatzgebiet deaktiviert';
-                }
-            }
-
-            // Zahlungsmodalitäten filtern
-            const allowedModalities = area.payment_modalities || ['monthly', 'quarterly', 'biannual', 'annual'];
-            const modalityMapping = {
-                'monthly': 'monthly',
-                'quarterly': 'quarterly',
-                'biannual': 'halfyearly',  // DB: biannual, Formular: halfyearly
-                'annual': 'yearly'          // DB: annual, Formular: yearly
-            };
-
-            // Alle interval-buttons durchgehen
-            document.querySelectorAll('.interval-btn').forEach(btn => {
-                const interval = btn.dataset.interval;
-                // Prüfen ob diese Modalität erlaubt ist
-                const isAllowed = allowedModalities.some(mod => modalityMapping[mod] === interval);
-
-                if (!isAllowed) {
-                    btn.style.display = 'none';
-                }
-            });
-
-            // Falls aktive Modalität nicht mehr erlaubt ist, erste erlaubte auswählen
-            const activeBtn = document.querySelector('.interval-btn.active');
-            if (activeBtn && activeBtn.style.display === 'none') {
-                const firstVisibleBtn = document.querySelector('.interval-btn:not([style*="display: none"])');
-                if (firstVisibleBtn) {
-                    activeBtn.classList.remove('active');
-                    firstVisibleBtn.classList.add('active');
-                }
-            }
-        }
-
-        // Kontext beim Laden initialisieren
-        loadFormContext();
-
-        // ================================================================
-        // EXISTING CODE
-        // ================================================================
-
         // Simulated member data for search
         const existingMembers = [
             { id: 1, name: 'Schmidt, Hans', street: 'Hauptstraße 12', zipCode: '12345', city: 'Musterstadt', memberNumber: 'M001', memberSince: '2020-01-15', amount: 10, iban: 'DE89370400440532013000', accountHolder: 'Hans Schmidt', bank: 'Sparkasse Musterstadt', bic: 'SPKADE2HXXX' },
@@ -1956,6 +1705,11 @@ const streetResults = data.results.filter(result => {
             // Check required fields
             required.forEach(id => {
                 const field = document.getElementById(id);
+                if (!field) {
+                    console.warn(`Feld '${id}' nicht gefunden`);
+                    isValid = false;
+                    return;
+                }
                 if (!field.value) {
                     field.style.borderColor = '#ff4444';
                     isValid = false;
@@ -1978,44 +1732,47 @@ const streetResults = data.results.filter(result => {
             }
 
             // Check if "IBAN selbst ausfüllen" is active
-            const ibanLaterActive = document.getElementById('ibanLaterCheck').style.display !== 'none';
+            const ibanLaterCheckEl = document.getElementById('ibanLaterCheck');
+            const ibanLaterActive = ibanLaterCheckEl ? ibanLaterCheckEl.style.display !== 'none' : false;
             
             // Payment field validation depends on mode (NMG vs ERH)
             if (!ibanLaterActive) {
                 // Always check Kontoinhaber (both NMG and ERH)
                 const accountHolder = document.getElementById('accountHolder');
-                if (!accountHolder.value) {
+                if (accountHolder && !accountHolder.value) {
                     accountHolder.style.borderColor = '#ff4444';
                     isValid = false;
                     if (!firstError) firstError = accountHolder;
-                } else {
+                } else if (accountHolder) {
                     accountHolder.style.borderColor = '#e0e0e0';
                 }
-                
+
                 if (isERHMode && selectedMember) {
                     // ERH Mode: Only validate last 4 digits of IBAN
-                    const ibanInput = document.getElementById('iban').value.replace(/\s/g, '');
+                    const ibanEl = document.getElementById('iban');
+                    const ibanInput = ibanEl ? ibanEl.value.replace(/\s/g, '') : '';
                     const storedIbanLast4 = selectedMember.iban.slice(-4);
                     
                     if (!ibanInput || ibanInput.length !== 4) {
-                        document.getElementById('iban').style.borderColor = '#ff4444';
+                        if (ibanEl) ibanEl.style.borderColor = '#ff4444';
                         isValid = false;
-                        if (!firstError) firstError = document.getElementById('iban');
+                        if (!firstError) firstError = ibanEl;
                     } else if (ibanInput !== storedIbanLast4) {
-                        document.getElementById('iban').style.borderColor = '#ff4444';
+                        if (ibanEl) ibanEl.style.borderColor = '#ff4444';
                         alert('❌ Die eingegebenen IBAN-Ziffern stimmen nicht überein.');
                         isValid = false;
-                        if (!firstError) firstError = document.getElementById('iban');
+                        if (!firstError) firstError = ibanEl;
                     } else {
-                        document.getElementById('iban').style.borderColor = '#e0e0e0';
+                        if (ibanEl) ibanEl.style.borderColor = '#e0e0e0';
                     }
-                    
+
                     // Bank and BIC are pre-filled in ERH, not validated as required
                 } else {
                     // NMG Mode: Validate full payment fields
                     const paymentFields = ['iban', 'bankName', 'bic'];
                     paymentFields.forEach(id => {
                         const field = document.getElementById(id);
+                        if (!field) return;
                         if (!field.value) {
                             field.style.borderColor = '#ff4444';
                             isValid = false;
@@ -2026,20 +1783,22 @@ const streetResults = data.results.filter(result => {
                     });
 
                     // Extra IBAN validation (length check) for NMG
-                    const iban = document.getElementById('iban').value.replace(/\s/g, '');
-                    if (iban && iban.length !== 22) {
-                        document.getElementById('iban').style.borderColor = '#ff4444';
+                    const ibanFieldNMG = document.getElementById('iban');
+                    const ibanValueNMG = ibanFieldNMG ? ibanFieldNMG.value.replace(/\s/g, '') : '';
+                    if (ibanValueNMG && ibanValueNMG.length !== 22) {
+                        if (ibanFieldNMG) ibanFieldNMG.style.borderColor = '#ff4444';
                         isValid = false;
                     }
                 }
             }
 
             // Check amount/interval selection
-            const individualAmount = document.getElementById('individualAmount');
+            const individualAmountEl = document.getElementById('individualAmount');
             const activeAmount = document.querySelector('.amount-btn.active');
-            const customAmount = document.getElementById('customAmount').value;
-            
-            if (individualAmount.classList.contains('hidden')) {
+            const customAmountEl = document.getElementById('customAmount');
+            const customAmountVal = customAmountEl ? customAmountEl.value : '';
+
+            if (!individualAmountEl || individualAmountEl.classList.contains('hidden')) {
                 // Standard mode: check if any button is selected
                 if (!activeAmount) {
                     alert('❌ Bitte wählen Sie einen Unterstützungsbeitrag aus.');
@@ -2047,33 +1806,40 @@ const streetResults = data.results.filter(result => {
                 }
             } else {
                 // Individual mode: check if amount is entered
-                if (!customAmount || parseFloat(customAmount) <= 0) {
-                    document.getElementById('customAmount').style.borderColor = '#ff4444';
+                if (!customAmountVal || parseFloat(customAmountVal) <= 0) {
+                    if (customAmountEl) customAmountEl.style.borderColor = '#ff4444';
                     alert('❌ Bitte geben Sie einen Unterstützungsbeitrag ein.');
                     isValid = false;
-                    if (!firstError) firstError = document.getElementById('customAmount');
+                    if (!firstError) firstError = customAmountEl;
                 } else {
-                    document.getElementById('customAmount').style.borderColor = '#e0e0e0';
+                    if (customAmountEl) customAmountEl.style.borderColor = '#e0e0e0';
                 }
             }
 
             // Check consents
             const consents = ['consent1', 'consent2', 'consent3'];
             consents.forEach(id => {
-                if (!document.getElementById(id).checked) {
+                const consentEl = document.getElementById(id);
+                if (consentEl && !consentEl.checked) {
                     isValid = false;
                 }
             });
 
             // Check signature
             const canvas = document.getElementById('signatureCanvas');
-            const ctx = canvas.getContext('2d');
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const hasSignature = imageData.data.some(channel => channel !== 0 && channel !== 255);
-
-            if (!hasSignature) {
-                document.querySelector('.signature-pad').style.borderColor = '#ff4444';
+            if (!canvas) {
+                console.warn('signatureCanvas nicht gefunden');
                 isValid = false;
+            } else {
+                const ctx = canvas.getContext('2d');
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const hasSignature = imageData.data.some(channel => channel !== 0 && channel !== 255);
+
+                if (!hasSignature) {
+                    const sigPad = document.querySelector('.signature-pad');
+                    if (sigPad) sigPad.style.borderColor = '#ff4444';
+                    isValid = false;
+                }
             }
 
             if (isValid) {
@@ -2086,104 +1852,158 @@ const streetResults = data.results.filter(result => {
             }
         }
 
+        // Supabase Konfiguration
+        const SUPABASE_URL = 'https://lgztglycqtiwcmiydxnm.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnenRnbHljcXRpd2NtaXlkeG5tIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzgwNzYxNSwiZXhwIjoyMDc5MzgzNjE1fQ.54kSk9ZSUdQt6LKYWkblqgR6Sjev80W80qkNHYEbPgk';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         async function submitForm() {
             const btn = document.getElementById('validateBtn');
+            if (!btn) {
+                console.error('validateBtn nicht gefunden');
+                return;
+            }
             btn.disabled = true;
             btn.innerHTML = 'Wird übermittelt... <span class="loading"></span>';
 
+            // Aktives Intervall ermitteln
+            const activeInterval = document.querySelector('.interval-btn.active');
+            const interval = activeInterval ? activeInterval.dataset.interval : 'monthly';
+
+            // Betrag ermitteln (aus Button oder Custom)
+            const activeAmount = document.querySelector('.amount-btn.active');
+            const customAmountField = document.getElementById('customAmount');
+            const individualAmount = document.getElementById('individualAmount');
+
+            let amount = 10; // Default
+            if (individualAmount && !individualAmount.classList.contains('hidden') && customAmountField?.value) {
+                amount = parseFloat(customAmountField.value);
+            } else if (activeAmount) {
+                // Button-Wert ist der Monatsbetrag
+                const baseMonthly = parseFloat(activeAmount.dataset.amount);
+                const intervalMultipliers = { 'monthly': 1, 'quarterly': 3, 'halfyearly': 6, 'yearly': 12 };
+                amount = baseMonthly * intervalMultipliers[interval];
+            }
+
+            // Helper function for safe element access
+            const getValue = (id) => document.getElementById(id)?.value || '';
+            const getChecked = (id) => document.getElementById(id)?.checked || false;
+
             // Collect form data
-            const type = document.querySelector('input[name="type"]:checked').value;
-            const amount = parseFloat(document.getElementById('customAmount').value) || 10;
-            const interval = document.getElementById('interval').value;
-
-            // Calculate yearly amount
-            const multipliers = {
-                'monthly': 12,
-                'quarterly': 4,
-                'halfyearly': 2,
-                'yearly': 1
-            };
-            const yearlyAmount = amount * multipliers[interval];
-
-            // ERH specific
-            const oldAmount = type === 'ERH' ? parseFloat(document.getElementById('oldAmount').value) || 0 : null;
-            const increaseAmount = type === 'ERH' && oldAmount ? (yearlyAmount - (oldAmount * multipliers[interval])) : null;
-
-            // Build record for Supabase
-            const record = {
-                // Verknüpfungen (aus URL/Kontext)
-                campaign_id: formContext.campaign_id,
-                campaign_area_id: formContext.campaign_area_id,
-                werber_id: formContext.botschafter_id,
-                teamchef_id: formContext.teamchef_id,
-                quality_id: formContext.quality_id,
-                customer_id: formContext.customer_id,
-                kw: formContext.kw,
-                year: formContext.year,
-
-                // Datensatz-Typ und Status
-                record_type: type === 'ERH' ? 'erhoehung' : 'neumitglied',
-                record_status: 'aktiv',
-                status: 'pending',
-
-                // Persönliche Daten
-                salutation: document.getElementById('salutation').value,
-                title: document.getElementById('title').value,
-                first_name: document.getElementById('firstName').value,
-                last_name: document.getElementById('lastName').value,
-                company: document.getElementById('company').value,
-                birth_date: document.getElementById('birthDate').value || null,
-                email: document.getElementById('email').value,
-                phone_fixed: document.getElementById('phoneFixed').value,
-                phone_mobile: document.getElementById('phoneMobile').value,
-
-                // Adresse
-                street: document.getElementById('street').value,
-                house_number: document.getElementById('houseNumber').value,
-                zip_code: document.getElementById('zipCode').value,
-                city: document.getElementById('city').value,
-
-                // Zahlungsdaten
-                iban: document.getElementById('iban').value,
-                payment_method: document.querySelector('input[name="paymentMethod"]:checked').value,
-
-                // Beträge
+            const typeRadio = document.querySelector('input[name="type"]:checked');
+            const formData = {
+                type: typeRadio ? typeRadio.value : 'NMG',
+                company: getValue('company'),
+                salutation: getValue('salutation'),
+                title: getValue('title'),
+                firstName: getValue('firstName'),
+                lastName: getValue('lastName'),
+                birthDate: getValue('birthDate'),
+                email: getValue('email'),
+                phoneFixed: getValue('phoneFixed'),
+                phoneMobile: getValue('phoneMobile'),
+                street: getValue('street'),
+                houseNumber: getValue('houseNumber'),
+                zipCode: getValue('zipCode'),
+                city: getValue('city'),
+                country: getValue('country'),
+                accountHolder: getValue('accountHolder'),
+                bankName: getValue('bankName'),
+                iban: getValue('iban'),
+                bic: getValue('bic'),
                 amount: amount,
-                yearly_amount: yearlyAmount,
                 interval: interval,
-                old_amount: oldAmount,
-                increase_amount: increaseAmount,
-
-                // ERH spezifisch
-                member_number: type === 'ERH' ? document.getElementById('memberNumber').value : null,
-                member_since: type === 'ERH' && document.getElementById('memberSince').value ? document.getElementById('memberSince').value : null,
-                start_date: document.getElementById('laterStartDate').value || null,
-
-                // Einwilligungen
-                consent_privacy: document.getElementById('consent1').checked,
-                consent_sepa: document.getElementById('consent2').checked,
-                consent_statutes: document.getElementById('consent3').checked,
-                contact_email: document.getElementById('contactEmail').checked,
-                contact_phone: document.getElementById('contactPhone').checked,
-
-                // Sonstiges
-                notes: document.getElementById('notes').value,
-                signature: document.getElementById('signatureCanvas').toDataURL()
+                spendenquittung: getChecked('spendenquittung'),
+                consent1: getChecked('consent1'),
+                consent2: getChecked('consent2'),
+                consent3: getChecked('consent3'),
+                contactEmail: getChecked('contactEmail'),
+                contactPhone: getChecked('contactPhone'),
+                laterStartDate: getValue('laterStartDate'),
+                notes: getValue('notes'),
+                signature: document.getElementById('signatureCanvas')?.toDataURL() || ''
             };
 
-            console.log('Saving record to Supabase:', record);
+            // Add ERH specific fields
+            if (formData.type === 'ERH') {
+                formData.memberNumber = getValue('memberNumber');
+                formData.memberSince = getValue('memberSince');
+                formData.oldAmount = parseFloat(getValue('oldAmount')) || 0;
+                formData.oldInterval = getValue('oldInterval');
+            }
+
+            // Calculate yearly amount (JE)
+            const yearMultipliers = { 'monthly': 12, 'quarterly': 4, 'halfyearly': 2, 'yearly': 1 };
+            formData.yearlyAmount = amount * yearMultipliers[interval];
+
+            console.log('Form data to submit:', formData);
 
             try {
-                // In Supabase speichern
-                const { data, error } = await supabaseClient
+                // DUPLIKAT-PRÜFUNG: Suche nach existierendem Record mit gleichen Daten
+                const { data: existingRecords, error: searchError } = await supabaseClient
                     .from('records')
-                    .insert(record)
+                    .select('id, data, created_at')
+                    .or(`data->>firstName.eq.${formData.firstName},data->>lastName.eq.${formData.lastName}`)
+                    .limit(100);
+
+                if (searchError) {
+                    console.error('Fehler bei Duplikat-Prüfung:', searchError);
+                }
+
+                // Prüfe auf echtes Duplikat (Name + Geburtsdatum + IBAN)
+                const cleanIban = formData.iban.replace(/\s/g, '');
+                const duplicateFound = existingRecords?.find(record => {
+                    const d = record.data;
+                    if (!d) return false;
+                    const existingIban = (d.iban || '').replace(/\s/g, '');
+                    return d.firstName === formData.firstName &&
+                           d.lastName === formData.lastName &&
+                           d.birthDate === formData.birthDate &&
+                           existingIban === cleanIban;
+                });
+
+                if (duplicateFound) {
+                    const dupDate = new Date(duplicateFound.created_at).toLocaleDateString('de-DE');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Jetzt überprüfen';
+                    alert(`❌ Duplikat gefunden!\n\nEin Datensatz mit diesen Daten existiert bereits (erstellt am ${dupDate}).\n\nBitte prüfen Sie die Eingaben.`);
+                    return;
+                }
+
+                // URL-Parameter für Kontext auslesen (botschafter, werbegebiet, kampagne)
+                const urlParams = new URLSearchParams(window.location.search);
+                const werberId = urlParams.get('botschafter') || null;
+                const areaId = urlParams.get('werbegebiet') || null;
+                const campaignId = urlParams.get('kampagne') || null;
+
+                // Validierung: Diese Felder sind in der DB NOT NULL
+                if (!werberId || !areaId || !campaignId) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Jetzt überprüfen';
+                    alert('❌ Fehler: Kontext fehlt!\n\nDas Formular muss über das Portal aufgerufen werden (Botschafter, Werbegebiet und Kampagne müssen ausgewählt sein).');
+                    console.error('Fehlende URL-Parameter:', { werberId, areaId, campaignId });
+                    return;
+                }
+
+                // In Supabase speichern
+                const { data: insertedRecord, error: insertError } = await supabaseClient
+                    .from('records')
+                    .insert({
+                        werber_id: werberId,
+                        area_id: areaId,
+                        campaign_id: campaignId,
+                        status: 'success',
+                        synced: true,
+                        data: formData
+                    })
                     .select()
                     .single();
 
-                if (error) throw error;
+                if (insertError) {
+                    throw insertError;
+                }
 
-                console.log('Record saved successfully:', data);
+                console.log('Record gespeichert:', insertedRecord);
 
                 // Show success page
                 document.querySelector('.container').innerHTML = `
@@ -2191,25 +2011,23 @@ const streetResults = data.results.filter(result => {
                         <div class="drk-logo" style="margin: 0 auto; width: 100px; height: 100px; font-size: 40px;">DRK</div>
                     </div>
                     <div style="padding: 40px; text-align: center;">
-                        <h1 style="color: #4caf50; margin-bottom: 20px;">✓ Erfolgreich gespeichert!</h1>
+                        <h1 style="color: #667eea; margin-bottom: 20px;">Vielen Dank!</h1>
                         <p style="font-size: 18px; color: #666; margin-bottom: 30px;">
-                            ${type === 'ERH' ? 'Beitragserhöhung' : 'Neumitgliedschaft'} wurde erfolgreich erfasst.
+                            Ihre Fördermitgliedschaft wurde erfolgreich registriert.
                         </p>
-                        <p style="color: #888; margin-bottom: 10px;">
-                            <strong>${record.first_name} ${record.last_name}</strong><br>
-                            Jahresbeitrag: ${yearlyAmount.toFixed(2)} €
+                        <p style="color: #888;">
+                            Sie erhalten in Kürze eine Bestätigungs-E-Mail mit allen Details.
                         </p>
                         <button onclick="location.reload()" class="submit-btn" style="margin-top: 30px;">
                             Neues Formular
                         </button>
                     </div>
                 `;
-
             } catch (error) {
                 console.error('Fehler beim Speichern:', error);
                 btn.disabled = false;
                 btn.innerHTML = 'Jetzt überprüfen';
-                alert('Fehler beim Speichern: ' + error.message);
+                alert(`❌ Fehler beim Speichern:\n\n${error.message || 'Unbekannter Fehler'}\n\nBitte versuchen Sie es erneut.`);
             }
         }
     </script>

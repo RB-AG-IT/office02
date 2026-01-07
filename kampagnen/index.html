@@ -2996,19 +2996,43 @@ async function removeWgFromCampaign() {
     );
     if (!confirmed) return;
 
-    const idx = campaignWerbegebiete.indexOf(wg);
-    if (idx > -1) {
-        campaignWerbegebiete.splice(idx, 1);
+    // Aus Supabase löschen
+    try {
+        const { error } = await supabase
+            .from('campaign_areas')
+            .delete()
+            .eq('id', wg.id);
+
+        if (error) throw error;
+
+        // Aus lokalem Array entfernen
+        const idx = campaignWerbegebiete.indexOf(wg);
+        if (idx > -1) {
+            campaignWerbegebiete.splice(idx, 1);
+        }
+
+        // Auch aus campaign.einsatzgebiete entfernen (damit es konsistent bleibt)
+        const campaign = campaigns.find(c => c.id === viewingCampaignId);
+        if (campaign && campaign.einsatzgebiete) {
+            const egIdx = campaign.einsatzgebiete.findIndex(eg => eg.id === wg.id);
+            if (egIdx > -1) {
+                campaign.einsatzgebiete.splice(egIdx, 1);
+            }
+        }
+
+        activeWgConfig = null;
+        document.getElementById('wgConfigPanel').style.display = 'none';
+        document.getElementById('wgConfigPlaceholder').style.display = 'flex';
+
+        renderAvailableWerbegebiete();
+        updateAddedWgList();
+
+        showToast(`${wg.name} entfernt`, 'success');
+
+    } catch (error) {
+        console.error('Fehler beim Löschen:', error);
+        showToast('Fehler beim Löschen: ' + error.message, 'error');
     }
-
-    activeWgConfig = null;
-    document.getElementById('wgConfigPanel').style.display = 'none';
-    document.getElementById('wgConfigPlaceholder').style.display = 'flex';
-
-    renderAvailableWerbegebiete();
-    updateAddedWgList();
-
-    showToast(`${wg.name} entfernt`, 'info');
 }
 
 // WG Konfiguration speichern

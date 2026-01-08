@@ -419,6 +419,10 @@
             einsatztageByKampagne = {};
             einsatztageByKunde = {};
 
+            // Sets für einzigartige Kalendertage pro Kampagne und Kunde
+            const uniqueDaysByKampagne = {}; // campaign_id -> Set von "kw_dayIndex"
+            const uniqueDaysByKunde = {}; // customer_id -> Set von "campaign_kw_dayIndex"
+
             attendance.forEach(row => {
                 // Nur Kampagnen im Zeitraum berücksichtigen
                 if (!validCampaignIds.has(row.campaign_id)) return;
@@ -442,30 +446,46 @@
                 const days = [row.day_0, row.day_1, row.day_2, row.day_3, row.day_4, row.day_5, row.day_6];
                 const countDays = days.filter(d => d === true).length;
 
-                // Pro User
+                // Pro User (Werber-Tage summiert)
                 if (!einsatztageMap[row.user_id]) {
                     einsatztageMap[row.user_id] = 0;
                 }
                 einsatztageMap[row.user_id] += countDays;
 
-                // Pro Kampagne (summiert alle User-Tage)
+                // Pro Kampagne und Kunde: Einzigartige Kalendertage zählen
                 if (row.campaign_id) {
-                    if (!einsatztageByKampagne[row.campaign_id]) {
-                        einsatztageByKampagne[row.campaign_id] = 0;
+                    if (!uniqueDaysByKampagne[row.campaign_id]) {
+                        uniqueDaysByKampagne[row.campaign_id] = new Set();
                     }
-                    einsatztageByKampagne[row.campaign_id] += countDays;
 
-                    // Pro Kunde (über campaign -> campaign_areas -> customer_areas -> customer)
-                    const customerIds = campaignToCustomers[row.campaign_id];
-                    if (customerIds) {
-                        customerIds.forEach(customerId => {
-                            if (!einsatztageByKunde[customerId]) {
-                                einsatztageByKunde[customerId] = 0;
+                    // Jeden aktiven Tag als einzigartigen Kalendertag markieren
+                    days.forEach((isActive, dayIndex) => {
+                        if (isActive) {
+                            const dayKey = `${row.kw}_${dayIndex}`;
+                            uniqueDaysByKampagne[row.campaign_id].add(dayKey);
+
+                            // Pro Kunde (über campaign -> campaign_areas -> customer_areas -> customer)
+                            const customerIds = campaignToCustomers[row.campaign_id];
+                            if (customerIds) {
+                                customerIds.forEach(customerId => {
+                                    if (!uniqueDaysByKunde[customerId]) {
+                                        uniqueDaysByKunde[customerId] = new Set();
+                                    }
+                                    // Einzigartiger Tag pro Kunde (inkl. Kampagne, falls gleicher Kunde in mehreren Kampagnen)
+                                    uniqueDaysByKunde[customerId].add(`${row.campaign_id}_${dayKey}`);
+                                });
                             }
-                            einsatztageByKunde[customerId] += countDays;
-                        });
-                    }
+                        }
+                    });
                 }
+            });
+
+            // Sets in Zahlen umwandeln
+            Object.keys(uniqueDaysByKampagne).forEach(campaignId => {
+                einsatztageByKampagne[campaignId] = uniqueDaysByKampagne[campaignId].size;
+            });
+            Object.keys(uniqueDaysByKunde).forEach(customerId => {
+                einsatztageByKunde[customerId] = uniqueDaysByKunde[customerId].size;
             });
         }
 

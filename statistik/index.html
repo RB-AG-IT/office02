@@ -507,6 +507,11 @@
                     einsatztage: einsatztageMap[user.id] || 0
                 };
             });
+
+            // Bei aktivem Datumsfilter: Nur Werber mit Einsatztagen im Zeitraum anzeigen
+            if (periodStartDate || periodEndDate) {
+                werberData = werberData.filter(w => w.einsatztage > 0);
+            }
         }
 
         // Kunden und Gebiete laden
@@ -897,7 +902,37 @@
             if (e.data && e.data.type === 'periodFilter') {
                 filterByPeriod(e.data.value);
             }
+
+            // Custom date range from shell calendar
+            if (e.data && e.data.type === 'customDateRangeApplied') {
+                applyCustomDateRange(e.data.dateFrom, e.data.dateTo);
+            }
         });
+
+        // Apply custom date range filter
+        async function applyCustomDateRange(fromStr, toStr) {
+            // Parse DD.MM.YYYY format
+            function parseDateStr(str) {
+                if (!str) return null;
+                const parts = str.split('.');
+                if (parts.length === 3) {
+                    return new Date(parts[2], parts[1] - 1, parts[0]);
+                }
+                return null;
+            }
+
+            periodStartDate = parseDateStr(fromStr);
+            periodEndDate = parseDateStr(toStr);
+            currentPeriod = 'custom';
+
+            // Reload data with new filter
+            await loadAllData();
+
+            // Re-render tables
+            renderWerberTable();
+            renderKundenGebieteTable();
+            renderKampagnenTable();
+        }
 
         // ========== PERIOD FILTER ==========
         let currentPeriod = 'year';

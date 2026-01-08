@@ -281,6 +281,11 @@
 
     <script>
         // =============================================
+        // SUPABASE CLIENT
+        // =============================================
+        const supabase = window.parent.supabaseClient;
+
+        // =============================================
         // URL-PARAMETER & INITIALISIERUNG
         // =============================================
         const urlParams = new URLSearchParams(window.location.search);
@@ -306,34 +311,44 @@
         }
 
         // =============================================
-        // DEMO-DATEN FÜR SUCHE
+        // SUCHDATEN AUS SUPABASE
         // =============================================
-        const searchData = {
-            werber: [
-                { id: 1, name: 'Max Mustermann', type: 'werber' },
-                { id: 2, name: 'Anna Schmidt', type: 'werber' },
-                { id: 3, name: 'Thomas Klein', type: 'werber' },
-                { id: 4, name: 'Julia Fischer', type: 'werber' },
-                { id: 5, name: 'Michael Bauer', type: 'werber' }
-            ],
-            kunden: [
-                { id: 101, name: 'DRK Odenwald', type: 'kunde' },
-                { id: 102, name: 'DRK Bergstraße', type: 'kunde' },
-                { id: 103, name: 'DRK Darmstadt', type: 'kunde' }
-            ],
-            kampagnen: [
-                { id: 201, name: 'Frühjahr 2025 - DRK Odenwald', type: 'kampagne' },
-                { id: 202, name: 'Sommer 2025 - DRK Bergstraße', type: 'kampagne' }
-            ],
-            gebiete: [
-                { id: 301, name: 'Erbach', type: 'gebiet' },
-                { id: 302, name: 'Heppenheim', type: 'gebiet' },
-                { id: 303, name: 'Darmstadt', type: 'gebiet' },
-                { id: 304, name: 'Michelstadt', type: 'gebiet' }
-            ]
-        };
+        let allSearchItems = [];
 
-        const allSearchItems = [...searchData.werber, ...searchData.kunden, ...searchData.kampagnen, ...searchData.gebiete];
+        async function loadSearchData() {
+            try {
+                // Werber laden
+                const { data: werber } = await supabase
+                    .from('users')
+                    .select('id, name')
+                    .eq('role', 'werber');
+
+                // Kunden laden
+                const { data: kunden } = await supabase
+                    .from('customers')
+                    .select('id, name, full_name');
+
+                // Kampagnen laden
+                const { data: kampagnen } = await supabase
+                    .from('campaigns')
+                    .select('id, name');
+
+                // Gebiete laden
+                const { data: gebiete } = await supabase
+                    .from('customer_areas')
+                    .select('id, name');
+
+                // Alle zusammenfügen
+                allSearchItems = [
+                    ...(werber || []).map(w => ({ id: w.id, name: w.name, type: 'werber' })),
+                    ...(kunden || []).map(k => ({ id: k.id, name: k.full_name || k.name, type: 'kunde' })),
+                    ...(kampagnen || []).map(k => ({ id: k.id, name: k.name, type: 'kampagne' })),
+                    ...(gebiete || []).map(g => ({ id: g.id, name: g.name, type: 'gebiet' }))
+                ];
+            } catch (error) {
+                console.error('Fehler beim Laden der Suchdaten:', error);
+            }
+        }
 
         window.addEventListener('message', function(e) {
             if (e.data && e.data.type === 'searchQuery') {
@@ -362,28 +377,98 @@
         });
 
         // =============================================
-        // DEMO-DATEN
+        // EINSÄTZE AUS SUPABASE LADEN
         // =============================================
-        const demoEinsaetze = [
-            { von: '06.01.2025', bis: '24.01.2025', kampagne: 'DRK Odenwald', gebiet: 'Erbach', mg: 42, je: 78, eh: 8 },
-            { von: '27.01.2025', bis: '07.02.2025', kampagne: 'DRK Bergstraße', gebiet: 'Heppenheim', mg: 31, je: 82, eh: 5 },
-            { von: '17.02.2025', bis: '28.02.2025', kampagne: 'DRK Darmstadt', gebiet: 'Darmstadt', mg: 28, je: 71, eh: 4 },
-            { von: '10.03.2025', bis: '28.03.2025', kampagne: 'DRK Odenwald', gebiet: 'Michelstadt', mg: 55, je: 85, eh: 12 }
-        ];
+        let einsaetzeData = [];
+        let tlEinsaetzeData = [];
+        let qEinsaetzeData = [];
 
-        const demoTLEinsaetze = [
-            { von: '06.01.2025', bis: '24.01.2025', kampagne: 'DRK Odenwald', gebiet: 'Erbach', effizienz: 82 },
-            { von: '27.01.2025', bis: '07.02.2025', kampagne: 'DRK Bergstraße', gebiet: 'Heppenheim', effizienz: 76 },
-            { von: '17.02.2025', bis: '28.02.2025', kampagne: 'DRK Darmstadt', gebiet: 'Darmstadt', effizienz: 88 },
-            { von: '10.03.2025', bis: '28.03.2025', kampagne: 'DRK Odenwald', gebiet: 'Michelstadt', effizienz: 91 }
-        ];
+        async function loadEinsaetze() {
+            if (!personId) return;
 
-        const demoQEinsaetze = [
-            { von: '06.01.2025', bis: '24.01.2025', kampagne: 'DRK Odenwald', gebiet: 'Erbach', stornoquote: 4.2 },
-            { von: '27.01.2025', bis: '07.02.2025', kampagne: 'DRK Bergstraße', gebiet: 'Heppenheim', stornoquote: 5.8 },
-            { von: '17.02.2025', bis: '28.02.2025', kampagne: 'DRK Darmstadt', gebiet: 'Darmstadt', stornoquote: 3.1 },
-            { von: '10.03.2025', bis: '28.03.2025', kampagne: 'DRK Odenwald', gebiet: 'Michelstadt', stornoquote: 2.9 }
-        ];
+            try {
+                // Kampagnen und Gebiete für Namen laden
+                const { data: campaigns } = await supabase.from('campaigns').select('id, name');
+                const { data: areas } = await supabase.from('campaign_areas').select('id, name');
+                const campaignMap = Object.fromEntries((campaigns || []).map(c => [c.id, c.name]));
+                const areaMap = Object.fromEntries((areas || []).map(a => [a.id, a.name]));
+
+                // Einsätze basierend auf personType laden
+                let query = supabase
+                    .from('campaign_attendance')
+                    .select('campaign_id, kw, day_0, day_1, day_2, day_3, day_4, day_5, day_6');
+
+                if (personType === 'werber') {
+                    query = query.eq('user_id', personId);
+                } else if (personType === 'kampagne') {
+                    query = query.eq('campaign_id', personId);
+                }
+
+                const { data: attendance } = await query;
+
+                // Records für Statistiken laden
+                let recordsQuery = supabase
+                    .from('records')
+                    .select('campaign_id, campaign_area_id, yearly_amount, record_status, created_at');
+
+                if (personType === 'werber') {
+                    recordsQuery = recordsQuery.eq('werber_id', personId);
+                } else if (personType === 'kunde') {
+                    recordsQuery = recordsQuery.eq('customer_id', personId);
+                } else if (personType === 'kampagne') {
+                    recordsQuery = recordsQuery.eq('campaign_id', personId);
+                }
+
+                const { data: records } = await recordsQuery;
+
+                // Einsätze nach Kampagne gruppieren und Stats berechnen
+                const einsatzMap = {};
+                (attendance || []).forEach(a => {
+                    if (!einsatzMap[a.campaign_id]) {
+                        einsatzMap[a.campaign_id] = { kws: new Set(), tage: 0 };
+                    }
+                    einsatzMap[a.campaign_id].kws.add(a.kw);
+                    const days = [a.day_0, a.day_1, a.day_2, a.day_3, a.day_4, a.day_5, a.day_6].filter(d => d).length;
+                    einsatzMap[a.campaign_id].tage += days;
+                });
+
+                // Records nach Kampagne aggregieren
+                const recordStats = {};
+                (records || []).forEach(r => {
+                    if (!recordStats[r.campaign_id]) {
+                        recordStats[r.campaign_id] = { mg: 0, je: 0, storno: 0, total: 0 };
+                    }
+                    recordStats[r.campaign_id].total++;
+                    if (r.record_status === 'aktiv') {
+                        recordStats[r.campaign_id].mg++;
+                        recordStats[r.campaign_id].je += (r.yearly_amount || 0);
+                    } else if (r.record_status === 'storno') {
+                        recordStats[r.campaign_id].storno++;
+                    }
+                });
+
+                // Einsätze zusammenbauen
+                einsaetzeData = Object.entries(einsatzMap).map(([campaignId, data]) => {
+                    const stats = recordStats[campaignId] || { mg: 0, je: 0, storno: 0, total: 0 };
+                    const stornoquote = stats.total > 0 ? (stats.storno / stats.total * 100) : 0;
+                    return {
+                        kampagne: campaignMap[campaignId] || 'Unbekannt',
+                        gebiet: '-',
+                        mg: stats.mg,
+                        je: stats.je,
+                        eh: Math.round(stats.je / 60 * 10) / 10,
+                        effizienz: data.tage > 0 ? Math.round(stats.mg / data.tage * 100) : 0,
+                        stornoquote: Math.round(stornoquote * 10) / 10
+                    };
+                });
+
+                tlEinsaetzeData = einsaetzeData.map(e => ({ ...e }));
+                qEinsaetzeData = einsaetzeData.map(e => ({ ...e }));
+
+            } catch (error) {
+                console.error('Fehler beim Laden der Einsätze:', error);
+            }
+        }
 
         // Achievement-Typen
         const werbenAchievementTypes = [
@@ -444,123 +529,190 @@
             { id: 'empfehlung_stufe', name: 'Tiefste Empfehlung Stufe' }
         ];
 
-        // Demo-Achievement-Daten
-        const demoAchievements = {
-            'mg_tag': { score: '12 MG', datum: '15.02.2025', kampagne: 'DRK Odenwald', active: true },
-            'eh_tag': { score: '5 EH', datum: '18.02.2025', kampagne: 'DRK Odenwald', active: false },
-            'mg_woche': { score: '42 MG', datumVon: '06.01.2025', datumBis: '10.01.2025', kampagne: 'DRK Odenwald', active: true },
-            'eh_woche': null,
-            'schrieb_nmg': { score: '45,00 €', datum: '22.01.2025', kampagne: 'DRK Bergstraße', active: false },
-            'beitragsanpassung': null,
-            'mg_stunde': { score: '4 MG', datum: '15.02.2025', kampagne: 'DRK Odenwald', active: true },
-            'eh_durchschnitt_tag': null,
-            'serie_stunde': null,
-            'serie_15min': null,
-            'tage_am_stueck': null,
-            'stornoquote_woche': null,
-            'eh_stunde': null
-        };
+        // =============================================
+        // ACHIEVEMENTS AUS SUPABASE BERECHNEN
+        // =============================================
+        let achievementsData = {};
+        let tlAchievementsData = {};
+        let qAchievementsData = {};
+        let rAchievementsData = {};
+        let eAchievementsData = {};
 
-        const demoTLAchievements = {
-            'mg_tag': { score: '48 MG', datum: '15.02.2025', kampagne: 'DRK Odenwald', active: true },
-            'eh_tag': { score: '18 EH', datum: '18.02.2025', kampagne: 'DRK Odenwald', active: false },
-            'mg_woche': { score: '156 MG', datumVon: '06.01.2025', datumBis: '10.01.2025', kampagne: 'DRK Odenwald', active: true },
-            'eh_woche': null,
-            'schrieb_nmg': { score: '52,00 €', datum: '22.01.2025', kampagne: 'DRK Bergstraße', active: false },
-            'beitragsanpassung': null,
-            'mg_stunde': { score: '12 MG', datum: '15.02.2025', kampagne: 'DRK Odenwald', active: true },
-            'eh_durchschnitt_tag': null,
-            'serie_stunde': null,
-            'serie_15min': null,
-            'effizienz': { score: '94%', datum: '20.03.2025', kampagne: 'DRK Odenwald', active: true },
-            'stornoquote_woche': null,
-            'eh_stunde': null
-        };
+        async function calculateAchievements() {
+            if (!personId) return;
 
-        const demoQAchievements = {
-            'stornoquote_woche': { score: '2,1%', datumVon: '10.03.2025', datumBis: '14.03.2025', kampagne: 'DRK Odenwald', active: true },
-            'eh_durchschnitt_woche': { score: '1,8 EH', datumVon: '06.01.2025', datumBis: '10.01.2025', kampagne: 'DRK Odenwald', active: false },
-            'einschulungen_woche': { score: '4', datumVon: '27.01.2025', datumBis: '31.01.2025', kampagne: 'DRK Bergstraße', active: true },
-            'einschulungen_monat': { score: '12', datumVon: '01.02.2025', datumBis: '28.02.2025', kampagne: 'DRK Darmstadt', active: false },
-            'zahlungsintervall_woche': { score: '28%', datumVon: '17.02.2025', datumBis: '21.02.2025', kampagne: 'DRK Darmstadt', active: true },
-            'mail_optin_woche': { score: '92%', datumVon: '10.03.2025', datumBis: '14.03.2025', kampagne: 'DRK Odenwald', active: false },
-            'tel_optin_woche': null
-        };
+            try {
+                // Records für diese Person laden
+                let recordsQuery = supabase
+                    .from('records')
+                    .select('id, campaign_id, yearly_amount, record_status, created_at, kw, year');
 
-        const demoRAchievements = {
-            ...demoAchievements,
-            'recruitings_monat': { score: '3', datumVon: '01.02.2025', datumBis: '28.02.2025', kampagne: 'DRK Darmstadt', active: true },
-            'recruitings_quartal': { score: '7', datumVon: '01.01.2025', datumBis: '31.03.2025', kampagne: 'DRK Odenwald', active: false },
-            'recruitings_serie': { score: '4', datum: '15.03.2025', kampagne: 'DRK Odenwald', active: true },
-            'recruiting_stufe': { score: 'Stufe 3', datum: '20.03.2025', kampagne: 'DRK Odenwald', active: false }
-        };
+                if (personType === 'werber') {
+                    recordsQuery = recordsQuery.eq('werber_id', personId);
+                } else if (personType === 'kunde') {
+                    recordsQuery = recordsQuery.eq('customer_id', personId);
+                } else if (personType === 'kampagne') {
+                    recordsQuery = recordsQuery.eq('campaign_id', personId);
+                }
 
+                const { data: records } = await recordsQuery;
+                const { data: campaigns } = await supabase.from('campaigns').select('id, name');
+                const campaignMap = Object.fromEntries((campaigns || []).map(c => [c.id, c.name]));
+
+                // Aktive Records
+                const activeRecords = (records || []).filter(r => r.record_status === 'aktiv');
+
+                // Pro Tag gruppieren
+                const recordsByDay = {};
+                activeRecords.forEach(r => {
+                    const day = r.created_at?.split('T')[0] || 'unknown';
+                    if (!recordsByDay[day]) recordsByDay[day] = [];
+                    recordsByDay[day].push(r);
+                });
+
+                // Pro Woche gruppieren
+                const recordsByWeek = {};
+                activeRecords.forEach(r => {
+                    const weekKey = `${r.year}-KW${r.kw}`;
+                    if (!recordsByWeek[weekKey]) recordsByWeek[weekKey] = [];
+                    recordsByWeek[weekKey].push(r);
+                });
+
+                // Beste Werte berechnen
+                let bestMgTag = { count: 0, date: null, campaign: null };
+                let bestEhTag = { eh: 0, date: null, campaign: null };
+                let bestMgWoche = { count: 0, week: null, campaign: null };
+                let bestSchrieb = { amount: 0, date: null, campaign: null };
+
+                Object.entries(recordsByDay).forEach(([day, recs]) => {
+                    if (recs.length > bestMgTag.count) {
+                        bestMgTag = { count: recs.length, date: day, campaign: campaignMap[recs[0]?.campaign_id] };
+                    }
+                    const eh = recs.reduce((sum, r) => sum + (r.yearly_amount || 0), 0) / 60;
+                    if (eh > bestEhTag.eh) {
+                        bestEhTag = { eh: Math.round(eh * 10) / 10, date: day, campaign: campaignMap[recs[0]?.campaign_id] };
+                    }
+                    const maxAmount = Math.max(...recs.map(r => r.yearly_amount || 0));
+                    if (maxAmount > bestSchrieb.amount) {
+                        bestSchrieb = { amount: maxAmount, date: day, campaign: campaignMap[recs[0]?.campaign_id] };
+                    }
+                });
+
+                Object.entries(recordsByWeek).forEach(([week, recs]) => {
+                    if (recs.length > bestMgWoche.count) {
+                        bestMgWoche = { count: recs.length, week: week, campaign: campaignMap[recs[0]?.campaign_id] };
+                    }
+                });
+
+                // Formatieren
+                const formatDate = (d) => d ? new Date(d).toLocaleDateString('de-DE') : '-';
+
+                achievementsData = {
+                    'mg_tag': bestMgTag.count > 0 ? { score: `${bestMgTag.count} MG`, datum: formatDate(bestMgTag.date), kampagne: bestMgTag.campaign || '-', active: true } : null,
+                    'eh_tag': bestEhTag.eh > 0 ? { score: `${bestEhTag.eh} EH`, datum: formatDate(bestEhTag.date), kampagne: bestEhTag.campaign || '-', active: true } : null,
+                    'mg_woche': bestMgWoche.count > 0 ? { score: `${bestMgWoche.count} MG`, datum: bestMgWoche.week, kampagne: bestMgWoche.campaign || '-', active: true } : null,
+                    'schrieb_nmg': bestSchrieb.amount > 0 ? { score: `${bestSchrieb.amount.toFixed(2)} €`, datum: formatDate(bestSchrieb.date), kampagne: bestSchrieb.campaign || '-', active: true } : null,
+                    'eh_woche': null,
+                    'beitragsanpassung': null,
+                    'mg_stunde': null,
+                    'eh_durchschnitt_tag': null,
+                    'serie_stunde': null,
+                    'serie_15min': null,
+                    'tage_am_stueck': null,
+                    'stornoquote_woche': null,
+                    'eh_stunde': null
+                };
+
+                tlAchievementsData = { ...achievementsData };
+                qAchievementsData = { ...achievementsData };
+                rAchievementsData = { ...achievementsData };
+                eAchievementsData = { ...achievementsData };
+
+            } catch (error) {
+                console.error('Fehler beim Berechnen der Achievements:', error);
+            }
+        }
+
+        // Fallback für leere Daten
         const demoEAchievements = {
-            ...demoAchievements,
             'empfehlungen_monat': { score: '5', datumVon: '01.02.2025', datumBis: '28.02.2025', kampagne: 'DRK Darmstadt', active: true },
             'empfehlungen_quartal': { score: '12', datumVon: '01.01.2025', datumBis: '31.03.2025', kampagne: 'DRK Odenwald', active: false },
             'empfehlungen_serie': { score: '6', datum: '18.03.2025', kampagne: 'DRK Odenwald', active: true },
             'empfehlung_stufe': { score: 'Stufe 4', datum: '22.03.2025', kampagne: 'DRK Bergstraße', active: false }
         };
 
-        // Referral-Trees
-        const demoRecruitingTree = {
-            name: 'Max Mustermann',
-            date: null,
-            children: [
-                {
-                    name: 'Anna Schmidt',
-                    date: '15.03.2024',
-                    mg: 38,
-                    eh: 6,
-                    children: [
-                        { name: 'Peter Müller', date: '01.08.2024' },
-                        { name: 'Lisa Weber', date: '15.09.2024' }
-                    ]
-                },
-                {
-                    name: 'Thomas Klein',
-                    date: '22.05.2024',
-                    mg: 52,
-                    eh: 9,
-                    children: [
-                        { name: 'Sarah Braun', date: '10.11.2024' }
-                    ]
-                },
-                {
-                    name: 'Julia Fischer',
-                    date: '08.07.2024',
-                    mg: 28,
-                    eh: 4,
-                    children: []
-                }
-            ]
-        };
+        // =============================================
+        // RECRUITING/EMPFEHLUNGS-BÄUME AUS SUPABASE
+        // =============================================
+        let recruitingTreeData = { name: personName || 'Unbekannt', date: null, children: [] };
+        let empfehlungTreeData = { name: personName || 'Unbekannt', date: null, children: [] };
 
-        const demoEmpfehlungTree = {
-            name: 'Max Mustermann',
-            date: null,
-            children: [
-                {
-                    name: 'Michael Bauer',
-                    date: '10.02.2024',
-                    mg: 45,
-                    eh: 7,
-                    children: [
-                        { name: 'Nina Hoffmann', date: '20.06.2024' },
-                        { name: 'Tim Schneider', date: '05.08.2024' },
-                        { name: 'Laura Meyer', date: '18.10.2024' }
-                    ]
-                },
-                {
-                    name: 'Sandra Wolf',
-                    date: '28.04.2024',
-                    mg: 31,
-                    eh: 5,
-                    children: []
+        async function loadRecruitmentTrees() {
+            if (!personId || personType !== 'werber') return;
+
+            try {
+                // User-Namen laden
+                const { data: users } = await supabase.from('users').select('id, name');
+                const userMap = Object.fromEntries((users || []).map(u => [u.id, u.name]));
+
+                // Recruitments laden (diese Person als recruited_by)
+                const { data: recruitments, error } = await supabase
+                    .from('user_recruitments')
+                    .select('user_id, recruited_by_id, recruitment_type, recruitment_date')
+                    .eq('recruited_by_id', personId);
+
+                if (error) {
+                    console.log('user_recruitments Tabelle noch nicht vorhanden');
+                    return;
                 }
-            ]
-        };
+
+                // Rekursive Funktion um Baum aufzubauen
+                async function buildTree(userId, type) {
+                    const children = (recruitments || [])
+                        .filter(r => r.recruited_by_id === userId && r.recruitment_type === type)
+                        .map(r => ({
+                            id: r.user_id,
+                            name: userMap[r.user_id] || 'Unbekannt',
+                            date: r.recruitment_date ? new Date(r.recruitment_date).toLocaleDateString('de-DE') : null,
+                            children: []
+                        }));
+
+                    // Für jeden Child rekursiv weiter suchen
+                    for (let child of children) {
+                        const subRecruitments = await supabase
+                            .from('user_recruitments')
+                            .select('user_id, recruitment_date')
+                            .eq('recruited_by_id', child.id)
+                            .eq('recruitment_type', type);
+
+                        if (subRecruitments.data) {
+                            child.children = subRecruitments.data.map(sr => ({
+                                name: userMap[sr.user_id] || 'Unbekannt',
+                                date: sr.recruitment_date ? new Date(sr.recruitment_date).toLocaleDateString('de-DE') : null,
+                                children: []
+                            }));
+                        }
+                    }
+
+                    return children;
+                }
+
+                recruitingTreeData = {
+                    name: personName || userMap[personId] || 'Unbekannt',
+                    date: null,
+                    children: await buildTree(personId, 'recruiting')
+                };
+
+                empfehlungTreeData = {
+                    name: personName || userMap[personId] || 'Unbekannt',
+                    date: null,
+                    children: await buildTree(personId, 'empfehlung')
+                };
+
+            } catch (error) {
+                console.error('Fehler beim Laden der Recruitment-Bäume:', error);
+            }
+        }
 
         // Übersichts-Rows für Werber
         const uebersichtRows = [
@@ -696,64 +848,77 @@
         };
 
         // =============================================
-        // ANSICHT BASIEREND AUF TYP
+        // INITIALISIERUNG
         // =============================================
-        const isKundeOrKampagne = personType === 'kunde' || personType === 'kampagne' || personType === 'gebiet';
+        async function initDashboard() {
+            // Daten aus Supabase laden
+            await Promise.all([
+                loadSearchData(),
+                loadEinsaetze(),
+                calculateAchievements(),
+                loadRecruitmentTrees()
+            ]);
 
-        if (isKundeOrKampagne) {
-            // Kunde/Kampagne/Gebiet: Tabs ausblenden, nur Übersicht
-            document.getElementById('dashboardSubTabs').style.display = 'none';
-            document.getElementById('uebersichtPlaceholder').style.display = 'none';
-            document.getElementById('kundeKampagneContent').style.display = 'block';
+            const isKundeOrKampagne = personType === 'kunde' || personType === 'kampagne' || personType === 'gebiet';
 
-            document.querySelectorAll('.kw-tab-content:not(#tab-uebersicht)').forEach(el => {
-                el.style.display = 'none';
-            });
+            if (isKundeOrKampagne) {
+                // Kunde/Kampagne/Gebiet: Tabs ausblenden, nur Übersicht
+                document.getElementById('dashboardSubTabs').style.display = 'none';
+                document.getElementById('uebersichtPlaceholder').style.display = 'none';
+                document.getElementById('kundeKampagneContent').style.display = 'block';
 
-            initStatsTable('kkStatsTableContainer');
-            initWochenverlaufChart('kkChart');
-            renderEinsatzTimeline('kkEinsatzTimeline', '01.01.2025', '31.03.2025', demoEinsaetze);
-            renderAchievementGrid('kkAchievementGrid', kkAchievementTypes, kkAchievements);
+                document.querySelectorAll('.kw-tab-content:not(#tab-uebersicht)').forEach(el => {
+                    el.style.display = 'none';
+                });
 
-        } else {
-            // Werber: Alle Tabs anzeigen
-            initTabs('.kw-tab', '.kw-tab-content');
+                initStatsTable('kkStatsTableContainer');
+                initWochenverlaufChart('kkChart');
+                renderEinsatzTimeline('kkEinsatzTimeline', '01.01.2025', '31.03.2025', einsaetzeData.length > 0 ? einsaetzeData : []);
+                renderAchievementGrid('kkAchievementGrid', kkAchievementTypes, achievementsData);
 
-            // Übersicht
-            initStatsTable('uebersichtStatsTableContainer', { rows: uebersichtRows });
+            } else {
+                // Werber: Alle Tabs anzeigen
+                initTabs('.kw-tab', '.kw-tab-content');
 
-            // Werben
-            initStatsTable('statsTableContainer');
-            initWochenverlaufChart('werbenChart');
-            renderEinsatzTimeline('einsatzTimeline', '01.01.2025', '31.03.2025', demoEinsaetze);
-            renderAchievementGrid('achievementGrid', werbenAchievementTypes, demoAchievements);
+                // Übersicht
+                initStatsTable('uebersichtStatsTableContainer', { rows: uebersichtRows });
 
-            // Teamleitung
-            initStatsTable('tlStatsTableContainer');
-            initWochenverlaufChart('teamleitungChart');
-            renderEinsatzTimeline('tlEinsatzTimeline', '01.01.2025', '31.03.2025', demoTLEinsaetze, {
-                stats: [{ key: 'effizienz', label: 'Effizienz', suffix: '%' }]
-            });
-            renderAchievementGrid('tlAchievementGrid', tlAchievementTypes, demoTLAchievements);
+                // Werben
+                initStatsTable('statsTableContainer');
+                initWochenverlaufChart('werbenChart');
+                renderEinsatzTimeline('einsatzTimeline', '01.01.2025', '31.03.2025', einsaetzeData.length > 0 ? einsaetzeData : []);
+                renderAchievementGrid('achievementGrid', werbenAchievementTypes, achievementsData);
 
-            // Quality
-            initStatsTable('qStatsTableContainer');
-            initWochenverlaufChart('qualityChart');
-            renderEinsatzTimeline('qEinsatzTimeline', '01.01.2025', '31.03.2025', demoQEinsaetze, {
-                stats: [{ key: 'stornoquote', label: 'Stornoquote', suffix: '%' }]
-            });
-            renderAchievementGrid('qAchievementGrid', qAchievementTypes, demoQAchievements);
+                // Teamleitung
+                initStatsTable('tlStatsTableContainer');
+                initWochenverlaufChart('teamleitungChart');
+                renderEinsatzTimeline('tlEinsatzTimeline', '01.01.2025', '31.03.2025', tlEinsaetzeData.length > 0 ? tlEinsaetzeData : [], {
+                    stats: [{ key: 'effizienz', label: 'Effizienz', suffix: '%' }]
+                });
+                renderAchievementGrid('tlAchievementGrid', tlAchievementTypes, tlAchievementsData);
 
-            // Recruiting
-            initStatsTable('rStatsTableContainer');
-            renderReferralTree('rContentContainer', demoRecruitingTree);
-            renderAchievementGrid('rAchievementGrid', rAchievementTypes, demoRAchievements);
+                // Quality
+                initStatsTable('qStatsTableContainer');
+                initWochenverlaufChart('qualityChart');
+                renderEinsatzTimeline('qEinsatzTimeline', '01.01.2025', '31.03.2025', qEinsaetzeData.length > 0 ? qEinsaetzeData : [], {
+                    stats: [{ key: 'stornoquote', label: 'Stornoquote', suffix: '%' }]
+                });
+                renderAchievementGrid('qAchievementGrid', qAchievementTypes, qAchievementsData);
 
-            // Empfehlung
-            initStatsTable('eStatsTableContainer');
-            renderReferralTree('eContentContainer', demoEmpfehlungTree);
-            renderAchievementGrid('eAchievementGrid', eAchievementTypes, demoEAchievements);
+                // Recruiting
+                initStatsTable('rStatsTableContainer');
+                renderReferralTree('rContentContainer', recruitingTreeData);
+                renderAchievementGrid('rAchievementGrid', rAchievementTypes, rAchievementsData);
+
+                // Empfehlung
+                initStatsTable('eStatsTableContainer');
+                renderReferralTree('eContentContainer', empfehlungTreeData);
+                renderAchievementGrid('eAchievementGrid', eAchievementTypes, eAchievementsData);
+            }
         }
+
+        // Dashboard initialisieren
+        initDashboard();
     </script>
 </body>
 </html>

@@ -672,6 +672,14 @@
                     einsatztage: kundeEinsatztage
                 };
             });
+
+            // Bei aktivem Datumsfilter: Nur Kunden mit Einsatztagen im Zeitraum anzeigen
+            if (periodStartDate || periodEndDate) {
+                kundenData = kundenData.filter(k => k.einsatztage > 0);
+                // Gebiete auch filtern (nur von sichtbaren Kunden)
+                const visibleKundenIds = new Set(kundenData.map(k => k.id));
+                gebieteData = gebieteData.filter(g => visibleKundenIds.has(g.kundeId));
+            }
         }
 
         // Kampagnen laden
@@ -781,6 +789,11 @@
                     einsatztage: einsatztageByKampagne[kampagne.id] || 0
                 };
             });
+
+            // Bei aktivem Datumsfilter: Nur Kampagnen mit Einsatztagen im Zeitraum anzeigen
+            if (periodStartDate || periodEndDate) {
+                kampagnenData = kampagnenData.filter(k => k.einsatztage > 0);
+            }
         }
 
         // ========== STATE ==========

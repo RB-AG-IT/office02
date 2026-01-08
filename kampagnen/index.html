@@ -6,8 +6,6 @@
     <title>Kampagnen - RB Inside</title>
     <link rel="stylesheet" href="../css/styles.css">
     <script src="../js/main.js"></script>
-    <!-- Employee Card Component -->
-    <script src="../components/employee-card.js" defer></script>
 </head>
 <body>
 
@@ -1660,7 +1658,7 @@ function renderAttendanceTracker(campaignId, kw, memberId, memberName) {
                     <button
                         class="btn btn-toggle ${data.days[i] ? 'present' : 'absent'}"
                         data-attendance="${campaignId}-${kw}-${memberId}-${i}"
-                        onclick="toggleAttendance(${campaignId}, ${kw}, ${memberId}, ${i})"
+                        onclick="toggleAttendance('${campaignId}', ${kw}, '${memberId}', ${i})"
                         title="${day}: ${data.days[i] ? 'Anwesend' : 'Abwesend'}"
                     >${day}</button>
                 `).join('')}
@@ -1668,7 +1666,7 @@ function renderAttendanceTracker(campaignId, kw, memberId, memberName) {
             <button
                 class="btn btn-sm btn-notes ${hasNotes ? 'has-notes' : ''}"
                 data-notes="${campaignId}-${kw}-${memberId}"
-                onclick="openNotesModal(${campaignId}, ${kw}, ${memberId}, '${memberName.replace(/'/g, "\\'")}')"
+                onclick="openNotesModal('${campaignId}', ${kw}, '${memberId}', '${memberName.replace(/'/g, "\\'")}')"
                 title="Notizen ${hasNotes ? '(' + data.notes.length + ')' : ''}"
             >
                 <span class="icon icon--stift"></span>
@@ -3843,7 +3841,7 @@ function renderKWDetails(campaign) {
                                         </div>
                                         ${renderAttendanceTracker(campaign.id, kw, tc.id, tc.name)}
                                         <div class="anzeigenfeld--card-right">
-                                            <button class="btn btn-icon btn-danger" onclick="removeKWMember(${kw}, ${tc.id})" title="Entfernen">
+                                            <button class="btn btn-icon btn-danger" onclick="removeKWMember(${kw}, '${tc.id}')" title="Entfernen">
                                                 <span class="icon icon--schliessen"></span>
                                             </button>
                                         </div>
@@ -3864,7 +3862,7 @@ function renderKWDetails(campaign) {
                                         </div>
                                         ${renderAttendanceTracker(campaign.id, kw, qm.id, qm.name)}
                                         <div class="anzeigenfeld--card-right">
-                                            <button class="btn btn-icon btn-danger" onclick="removeKWMember(${kw}, ${qm.id})" title="Entfernen">
+                                            <button class="btn btn-icon btn-danger" onclick="removeKWMember(${kw}, '${qm.id}')" title="Entfernen">
                                                 <span class="icon icon--schliessen"></span>
                                             </button>
                                         </div>
@@ -3887,7 +3885,7 @@ function renderKWDetails(campaign) {
                                         ${renderAttendanceTracker(campaign.id, kw, w.id, w.name)}
                                         <div class="anzeigenfeld--card-right">
                                             ${w.label ? '<span class="pill pill--' + (w.label === 'neuanreise' ? 'success' : w.label === 'abreise' ? 'error' : 'beide') + '">' + (w.label === 'neuanreise' ? 'Neuanreise' : w.label === 'abreise' ? 'Abreise' : 'An/Ab') + '</span>' : ''}
-                                            <button class="btn btn-icon btn-danger" onclick="removeKWMember(${kw}, ${w.id})" title="Entfernen">
+                                            <button class="btn btn-icon btn-danger" onclick="removeKWMember(${kw}, '${w.id}')" title="Entfernen">
                                                 <span class="icon icon--schliessen"></span>
                                             </button>
                                         </div>
@@ -4642,7 +4640,7 @@ function renderLastSchriebe(campaign) {
         const wgInitials = getInitials(schrieb.werbegebiet);
 
         html += `
-            <div class="schrieb-compact" onclick="openSchriebDetails(${schrieb.id})" title="${schrieb.memberName} - ${schrieb.eh} EH">
+            <div class="schrieb-compact" onclick="openSchriebDetails('${schrieb.id}')" title="${schrieb.memberName} - ${schrieb.eh} EH">
                 <div class="schrieb-compact-header">
                     <div class="schrieb-compact-member">
                         <div class="user-badge ${badgeClass} user-badge--small">

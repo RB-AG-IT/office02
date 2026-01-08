@@ -1884,7 +1884,7 @@ function getCurrentKW() {
 }
 
 // Open view modal (ERWEITERT)
-function viewCampaign(id) {
+async function viewCampaign(id) {
     const campaign = campaigns.find(c => c.id === id);
     if (!campaign) return;
 
@@ -1892,6 +1892,9 @@ function viewCampaign(id) {
 
     // Kampagnen-Name im Header
     document.getElementById('campaignViewName').textContent = campaign.name;
+
+    // Anwesenheitsdaten aus Supabase laden
+    await loadAttendanceFromSupabase(id);
 
     // KW Details (erweitert)
     renderKWDetails(campaign);

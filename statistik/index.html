@@ -304,11 +304,14 @@
         // ========== SUPABASE DATA LOADING ==========
         async function loadAllData() {
             try {
+                // Erst Einsatztage laden (wird von anderen Funktionen benötigt)
+                await loadEinsatztage();
+
+                // Dann Rest parallel laden
                 await Promise.all([
                     loadWerberData(),
                     loadKundenData(),
-                    loadKampagnenData(),
-                    loadEinsatztage()
+                    loadKampagnenData()
                 ]);
             } catch (error) {
                 console.error('Fehler beim Laden der Daten:', error);
@@ -382,10 +385,20 @@
                 rolesMap[r.user_id] = r.role_name;
             });
 
-            // Records laden für Statistiken
-            const { data: records, error: recordsError } = await supabase
+            // Records laden für Statistiken (mit Zeitraum-Filter)
+            let recordsQuery = supabase
                 .from('records')
-                .select('werber_id, yearly_amount, record_status');
+                .select('werber_id, yearly_amount, record_status, created_at');
+
+            // Zeitraum-Filter anwenden
+            if (periodStartDate) {
+                recordsQuery = recordsQuery.gte('created_at', periodStartDate.toISOString().split('T')[0]);
+            }
+            if (periodEndDate) {
+                recordsQuery = recordsQuery.lte('created_at', periodEndDate.toISOString().split('T')[0] + 'T23:59:59');
+            }
+
+            const { data: records, error: recordsError } = await recordsQuery;
 
             if (recordsError) {
                 console.error('Fehler beim Laden der Records:', recordsError);
@@ -465,10 +478,19 @@
                 }
             });
 
-            // Records laden für Statistiken
-            const { data: records, error: recordsError } = await supabase
+            // Records laden für Statistiken (mit Zeitraum-Filter)
+            let recordsQuery = supabase
                 .from('records')
-                .select('customer_id, campaign_area_id, yearly_amount, record_status');
+                .select('customer_id, campaign_area_id, yearly_amount, record_status, created_at');
+
+            if (periodStartDate) {
+                recordsQuery = recordsQuery.gte('created_at', periodStartDate.toISOString().split('T')[0]);
+            }
+            if (periodEndDate) {
+                recordsQuery = recordsQuery.lte('created_at', periodEndDate.toISOString().split('T')[0] + 'T23:59:59');
+            }
+
+            const { data: records, error: recordsError } = await recordsQuery;
 
             if (recordsError) {
                 console.error('Fehler beim Laden der Records:', recordsError);
@@ -582,10 +604,19 @@
                 console.error('Fehler beim Laden der Werbegebiete:', wgError);
             }
 
-            // Records laden für Statistiken
-            const { data: records, error: recordsError } = await supabase
+            // Records laden für Statistiken (mit Zeitraum-Filter)
+            let recordsQuery = supabase
                 .from('records')
-                .select('campaign_id, campaign_area_id, yearly_amount, record_status');
+                .select('campaign_id, campaign_area_id, yearly_amount, record_status, created_at');
+
+            if (periodStartDate) {
+                recordsQuery = recordsQuery.gte('created_at', periodStartDate.toISOString().split('T')[0]);
+            }
+            if (periodEndDate) {
+                recordsQuery = recordsQuery.lte('created_at', periodEndDate.toISOString().split('T')[0] + 'T23:59:59');
+            }
+
+            const { data: records, error: recordsError } = await recordsQuery;
 
             if (recordsError) {
                 console.error('Fehler beim Laden der Records:', recordsError);
@@ -660,174 +691,6 @@
                 };
             });
         }
-
-        // Generate 100 dummy records with ALL form fields
-        const statistikRecordsData = (function() {
-            const vornamen = ['Max', 'Erika', 'Hans', 'Maria', 'Peter', 'Sabine', 'Thomas', 'Laura', 'Michael', 'Julia', 'Andreas', 'Claudia', 'Stefan', 'Martina', 'Christian', 'Nicole', 'Markus', 'Sandra', 'Frank', 'Petra', 'Jürgen', 'Monika', 'Uwe', 'Karin', 'Ralf', 'Birgit', 'Bernd', 'Heike', 'Dirk', 'Anja'];
-            const nachnamen = ['Müller', 'Schmidt', 'Schneider', 'Fischer', 'Weber', 'Meyer', 'Wagner', 'Becker', 'Schulz', 'Hoffmann', 'Koch', 'Richter', 'Klein', 'Wolf', 'Schröder', 'Neumann', 'Schwarz', 'Braun', 'Zimmermann', 'Krüger', 'Hartmann', 'Lange', 'Werner', 'Krause', 'Meier'];
-            const strassen = ['Hauptstr.', 'Bahnhofstr.', 'Gartenweg', 'Ringstr.', 'Am Markt', 'Waldstr.', 'Beethovenstr.', 'Schillerstr.', 'Rheinstr.', 'Mozartstr.', 'Goethestr.', 'Kirchstr.', 'Schulstr.', 'Bergstr.', 'Lindenstr.'];
-            const areas = ['Ludwigshafen-Mitte', 'Ludwigshafen-Süd', 'Oggersheim', 'Mannheim-Nord', 'Mannheim-Süd'];
-            const kunden = ['DRK KV Ludwigshafen', 'DRK KV Mannheim'];
-            const werber = ['Anna Schmidt', 'Max Müller', 'Tim Bauer', 'Lisa Weber'];
-            const teamchefs = ['Michael Wagner', 'Sandra Hoffmann', 'Klaus Meier'];
-            const jeWerte = [60, 120, 180, 240];
-            const types = ['nmg', 'nmg', 'nmg', 'erh']; // 75% NMG, 25% ERH
-            const anreden = ['Herr', 'Frau', 'Divers'];
-            const titel = ['', '', '', '', 'Dr.', 'Prof.', 'Prof. Dr.']; // Meist kein Titel
-            const firmen = ['', '', '', '', '', 'Musterfirma GmbH', 'Beispiel AG', 'Test & Co. KG'];
-            const intervalle = ['monthly', 'quarterly', 'halfyearly', 'yearly'];
-            const intervallLabels = { monthly: 'Monatlich', quarterly: 'Vierteljährlich', halfyearly: 'Halbjährlich', yearly: 'Jährlich' };
-            const intervallMultiplier = { monthly: 12, quarterly: 4, halfyearly: 2, yearly: 1 };
-            const banken = ['Sparkasse Ludwigshafen', 'Volksbank Rhein-Neckar', 'Deutsche Bank', 'Commerzbank', 'ING DiBa', 'Postbank'];
-            const laender = ['Deutschland', 'Deutschland', 'Deutschland', 'Deutschland', 'Österreich', 'Schweiz'];
-
-            const records = [];
-            const startDate = new Date('2024-11-25');
-
-            // Generate random IBAN (German format)
-            function generateIBAN() {
-                const bankCode = ['37040044', '50010517', '67050505', '54550010'][Math.floor(Math.random() * 4)];
-                const accountNr = String(Math.floor(Math.random() * 9999999999)).padStart(10, '0');
-                return `DE${String(Math.floor(Math.random() * 90) + 10).padStart(2, '0')} ${bankCode.substring(0,4)} ${bankCode.substring(4)} ${accountNr.substring(0,4)} ${accountNr.substring(4,8)} ${accountNr.substring(8)}`;
-            }
-
-            // Generate random BIC
-            function generateBIC() {
-                const bics = ['COBADEFFXXX', 'DEUTDEDB', 'GENODEF1S01', 'PBNKDEFF', 'INGDDEFF'];
-                return bics[Math.floor(Math.random() * bics.length)];
-            }
-
-            // Generate random phone number
-            function generatePhone(mobile = false) {
-                if (mobile) {
-                    const prefix = ['0151', '0152', '0157', '0160', '0170', '0171', '0175', '0176', '0177', '0178', '0179'];
-                    return `${prefix[Math.floor(Math.random() * prefix.length)]} ${Math.floor(Math.random() * 90000000) + 10000000}`;
-                } else {
-                    return `0621 ${Math.floor(Math.random() * 9000000) + 1000000}`;
-                }
-            }
-
-            // Generate random birth date (18-85 years old)
-            function generateBirthDate() {
-                const today = new Date();
-                const minAge = 18, maxAge = 85;
-                const year = today.getFullYear() - minAge - Math.floor(Math.random() * (maxAge - minAge));
-                const month = Math.floor(Math.random() * 12);
-                const day = Math.floor(Math.random() * 28) + 1;
-                return new Date(year, month, day).toISOString().split('T')[0];
-            }
-
-            // Generate member since date for ERH (1-10 years ago)
-            function generateMemberSince() {
-                const today = new Date();
-                const yearsAgo = Math.floor(Math.random() * 10) + 1;
-                const date = new Date(today.getFullYear() - yearsAgo, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1);
-                return date.toISOString().split('T')[0];
-            }
-
-            for (let i = 1; i <= 100; i++) {
-                const dayOffset = Math.floor((i - 1) / 4); // ~4 records per day
-                const date = new Date(startDate);
-                date.setDate(date.getDate() - dayOffset);
-                const dateStr = date.toISOString().split('T')[0];
-
-                const vorname = vornamen[Math.floor(Math.random() * vornamen.length)];
-                const nachname = nachnamen[Math.floor(Math.random() * nachnamen.length)];
-                const strasse = strassen[Math.floor(Math.random() * strassen.length)];
-                const hausnr = Math.floor(Math.random() * 99) + 1;
-                const plz = ['67059', '67063', '67071', '68159', '68161'][Math.floor(Math.random() * 5)];
-                const city = ['Ludwigshafen', 'Mannheim'][Math.floor(Math.random() * 2)];
-                const area = areas[Math.floor(Math.random() * areas.length)];
-                const kunde = area.startsWith('Mannheim') ? 'DRK KV Mannheim' : 'DRK KV Ludwigshafen';
-                const type = types[Math.floor(Math.random() * types.length)];
-                const interval = intervalle[Math.floor(Math.random() * intervalle.length)];
-                const je = jeWerte[Math.floor(Math.random() * jeWerte.length)];
-                const amount = je / intervallMultiplier[interval]; // Beitrag pro Intervall
-                const anrede = anreden[Math.floor(Math.random() * anreden.length)];
-                const titelVal = titel[Math.floor(Math.random() * titel.length)];
-                const firma = firmen[Math.floor(Math.random() * firmen.length)];
-                const land = laender[Math.floor(Math.random() * laender.length)];
-
-                const record = {
-                    // System-Felder
-                    id: i,
-                    status: Math.random() > 0.1 ? 'active' : 'storniert',
-
-                    // Persönliche Daten
-                    type: type,
-                    salutation: anrede,
-                    title: titelVal,
-                    company: firma,
-                    firstName: vorname,
-                    lastName: nachname,
-                    name: `${vorname} ${nachname}`, // Kombiniert für Anzeige
-                    birthDate: generateBirthDate(),
-                    email: `${vorname.toLowerCase()}.${nachname.toLowerCase()}@email.de`,
-                    phoneMobile: Math.random() > 0.3 ? generatePhone(true) : '',
-                    phoneFixed: Math.random() > 0.5 ? generatePhone(false) : '',
-
-                    // Anschrift
-                    street: strasse,
-                    houseNumber: String(hausnr),
-                    zipCode: plz,
-                    city: city,
-                    country: land,
-                    address: `${strasse} ${hausnr}, ${plz} ${city}`, // Kombiniert für Anzeige
-
-                    // Zahlungsinformation
-                    accountHolder: `${vorname} ${nachname}`,
-                    bankName: banken[Math.floor(Math.random() * banken.length)],
-                    iban: generateIBAN(),
-                    bic: generateBIC(),
-
-                    // Beitrag
-                    amount: amount,
-                    interval: interval,
-                    intervalLabel: intervallLabels[interval],
-                    je: je, // Jahreseuros
-                    spendenquittung: Math.random() > 0.7,
-
-                    // Einwilligungen
-                    consent1: true,
-                    consent2: true,
-                    consent3: true,
-                    contactEmail: Math.random() > 0.2,
-                    contactPhone: Math.random() > 0.4,
-
-                    // Sonstiges
-                    laterStartDate: Math.random() > 0.9 ? new Date(Date.now() + Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : '',
-                    notes: Math.random() > 0.8 ? 'Kunde wünscht Kontakt nur per Email' : '',
-                    createdAt: dateStr,
-                    date: dateStr, // Alias für Anzeige
-
-                    // Externe Zuordnungen
-                    area: area,
-                    kunde: kunde,
-                    werber: werber[Math.floor(Math.random() * werber.length)],
-                    teamchef: teamchefs[Math.floor(Math.random() * teamchefs.length)],
-
-                    // Einheiten (EH) berechnet aus JE
-                    eh: je / 60,
-
-                    // IDs für Filterung
-                    kundeId: kunde === 'DRK KV Ludwigshafen' ? 1 : 2,
-                    gebietId: area === 'Ludwigshafen-Mitte' ? 1 : area === 'Ludwigshafen-Süd' ? 2 : area === 'Oggersheim' ? 3 : area === 'Mannheim-Nord' ? 4 : 5,
-                    werberId: Math.floor(Math.random() * 4) + 1, // 1-4 matching werberData
-                    beitrag: amount // Alias für Anzeige in Letzte 100
-                };
-
-                // ERH-spezifische Felder
-                if (type === 'erh') {
-                    record.memberNumber = `M-${2020 - Math.floor(Math.random() * 5)}-${String(Math.floor(Math.random() * 999) + 1).padStart(3, '0')}`;
-                    record.memberSince = generateMemberSince();
-                    record.oldAmount = [5, 10, 15][Math.floor(Math.random() * 3)];
-                    record.oldInterval = 'monthly';
-                }
-
-                records.push(record);
-            }
-            return records;
-        })();
 
         // ========== STATE ==========
         let currentCategory = 'werber';
@@ -909,19 +772,6 @@
             'street', 'houseNumber', 'zipCode', 'city', 'country', 'accountHolder', 'iban', 'bic',
             'amount', 'notes', 'bankName', 'company', 'salutation', 'title'];
 
-        // Bestandsmitglieder Data (per Gebiet/Entity)
-        // Key = "gebiet_1" or "kunde_1", value = array of Bestandsmitglieder
-        const bestandsmitgliederData = {};
-
-        // Dummy Bestandsmitglieder für Demo (für Ludwigshafen-Mitte)
-        bestandsmitgliederData['gebiet_1'] = [
-            { id: 1, name: 'Werner Schulze', address: 'Friedrichstr. 45, 67059 Ludwigshafen', email: 'w.schulze@web.de', memberSince: '2019-03-15', currentJE: 60, hasErhoehung: false },
-            { id: 2, name: 'Helga Neumann', address: 'Kaiserstr. 23, 67059 Ludwigshafen', email: 'h.neumann@gmx.de', memberSince: '2020-07-22', currentJE: 120, hasErhoehung: false },
-            { id: 3, name: 'Dieter Lange', address: 'Bismarckstr. 8, 67059 Ludwigshafen', email: 'd.lange@t-online.de', memberSince: '2018-11-03', currentJE: 60, hasErhoehung: true },
-            { id: 4, name: 'Ingrid Vogel', address: 'Parkstr. 17, 67059 Ludwigshafen', email: 'i.vogel@email.de', memberSince: '2021-02-14', currentJE: 180, hasErhoehung: false },
-            { id: 5, name: 'Günther Maier', address: 'Schulweg 3, 67059 Ludwigshafen', email: 'g.maier@yahoo.de', memberSince: '2017-09-28', currentJE: 60, hasErhoehung: false }
-        ];
-
         // ========== INITIALIZATION ==========
         document.addEventListener('DOMContentLoaded', async function() {
             // Erst Daten aus Supabase laden
@@ -983,12 +833,73 @@
 
         // ========== PERIOD FILTER ==========
         let currentPeriod = 'year';
+        let periodStartDate = null;
+        let periodEndDate = null;
 
-        function filterByPeriod(period) {
+        function calculatePeriodDates(period) {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            let start = null;
+            let end = null;
+
+            switch (period) {
+                case 'today':
+                    start = today;
+                    end = today;
+                    break;
+                case 'week':
+                    // KW: Montag bis Sonntag
+                    const dayOfWeek = today.getDay() || 7; // Sonntag = 7
+                    start = new Date(today);
+                    start.setDate(today.getDate() - dayOfWeek + 1);
+                    end = new Date(start);
+                    end.setDate(start.getDate() + 6);
+                    break;
+                case 'month':
+                    start = new Date(now.getFullYear(), now.getMonth(), 1);
+                    end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                    break;
+                case 'quarter':
+                    const quarter = Math.floor(now.getMonth() / 3);
+                    start = new Date(now.getFullYear(), quarter * 3, 1);
+                    end = new Date(now.getFullYear(), quarter * 3 + 3, 0);
+                    break;
+                case 'year':
+                    start = new Date(now.getFullYear(), 0, 1);
+                    end = new Date(now.getFullYear(), 11, 31);
+                    break;
+                case 'all':
+                case 'custom':
+                default:
+                    start = null;
+                    end = null;
+                    break;
+            }
+
+            return { start, end };
+        }
+
+        function getKwFromDate(date) {
+            // ISO-Woche berechnen
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+
+        async function filterByPeriod(period) {
             currentPeriod = period;
-            // Hier später die eigentliche Filter-Logik implementieren
-            // wenn die Daten ein Datum haben
-            console.log('Period filter:', period);
+            const { start, end } = calculatePeriodDates(period);
+            periodStartDate = start;
+            periodEndDate = end;
+
+            // Daten neu laden mit Filter
+            await loadAllData();
+
+            // Tabellen neu rendern
+            renderWerberTable();
+            renderKundenGebieteTable();
+            renderKampagnenTable();
         }
 
         // ========== CATEGORY SELECTION ==========

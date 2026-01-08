@@ -4001,15 +4001,25 @@ async function setKWTeamchef(kw, tcId) {
     }
     campaign.assignments[kw].teamchef = tcId || null;
 
-    // In Supabase speichern
+    // In Supabase speichern (upsert um sicherzustellen dass Assignment existiert)
     try {
-        await supabase
+        const { error } = await supabase
             .from('campaign_assignments')
-            .update({ teamchef_id: tcId || null })
-            .eq('campaign_id', campaign.id)
-            .eq('kw', kw);
+            .upsert({
+                campaign_id: campaign.id,
+                kw: kw,
+                teamchef_id: tcId || null
+            }, { onConflict: 'campaign_id,kw' });
+
+        if (error) {
+            console.error('Fehler beim Speichern des Teamchefs:', error);
+            showToast('Fehler beim Speichern', 'error');
+            return;
+        }
     } catch (error) {
         console.error('Fehler beim Speichern des Teamchefs:', error);
+        showToast('Fehler beim Speichern', 'error');
+        return;
     }
 
     showToast(`Teamchef für KW ${kw} ${tcId ? 'gesetzt' : 'entfernt'}`, 'success');
@@ -4026,15 +4036,25 @@ async function setKWQualityManager(kw, qmId) {
         campaign.assignments[kw] = {};
     }
 
-    // In Supabase speichern
+    // In Supabase speichern (upsert um sicherzustellen dass Assignment existiert)
     try {
-        await supabase
+        const { error } = await supabase
             .from('campaign_assignments')
-            .update({ quality_manager_id: qmId || null })
-            .eq('campaign_id', campaign.id)
-            .eq('kw', kw);
+            .upsert({
+                campaign_id: campaign.id,
+                kw: kw,
+                quality_manager_id: qmId || null
+            }, { onConflict: 'campaign_id,kw' });
+
+        if (error) {
+            console.error('Fehler beim Speichern des Quality Managers:', error);
+            showToast('Fehler beim Speichern', 'error');
+            return;
+        }
     } catch (error) {
         console.error('Fehler beim Speichern des Quality Managers:', error);
+        showToast('Fehler beim Speichern', 'error');
+        return;
     }
 
     campaign.assignments[kw].qualityManager = qmId || null;
@@ -4242,24 +4262,50 @@ async function addKWMember(kw) {
 
     // In Supabase speichern
     try {
-        // Assignment-ID holen
-        const { data: assignment } = await supabase
+        // Assignment-ID holen oder erstellen
+        let { data: assignment, error: fetchError } = await supabase
             .from('campaign_assignments')
             .select('id')
             .eq('campaign_id', campaign.id)
             .eq('kw', kw)
             .single();
 
-        if (assignment) {
-            await supabase
-                .from('campaign_assignment_werber')
+        // Wenn kein Assignment existiert, eines erstellen
+        if (!assignment) {
+            const { data: newAssignment, error: insertError } = await supabase
+                .from('campaign_assignments')
                 .insert({
-                    assignment_id: assignment.id,
-                    werber_id: memberId
-                });
+                    campaign_id: campaign.id,
+                    kw: kw
+                })
+                .select('id')
+                .single();
+
+            if (insertError) {
+                console.error('Fehler beim Erstellen des Assignments:', insertError);
+                showToast('Fehler beim Speichern', 'error');
+                return;
+            }
+            assignment = newAssignment;
+        }
+
+        // Werber zum Assignment hinzufügen
+        const { error: werberError } = await supabase
+            .from('campaign_assignment_werber')
+            .insert({
+                assignment_id: assignment.id,
+                werber_id: memberId
+            });
+
+        if (werberError) {
+            console.error('Fehler beim Hinzufügen des Werbers:', werberError);
+            showToast('Fehler beim Speichern', 'error');
+            return;
         }
     } catch (error) {
         console.error('Fehler beim Hinzufügen des Werbers:', error);
+        showToast('Fehler beim Speichern', 'error');
+        return;
     }
 
     campaign.assignments[kw].werber.push(memberId);

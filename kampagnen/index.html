@@ -1183,9 +1183,18 @@
 
 <script>
 // ============================================
-// SUPABASE CLIENT (von Shell holen)
+// SUPABASE CLIENT (von Shell holen oder eigenen erstellen)
 // ============================================
-const supabase = window.parent.supabaseClient;
+const SUPABASE_URL = 'https://lgztglycqtiwcmiydxnm.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnenRnbHljcXRpd2NtaXlkeG5tIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzgwNzYxNSwiZXhwIjoyMDc5MzgzNjE1fQ.54kSk9ZSUdQt6LKYWkblqgR6Sjev80W80qkNHYEbPgk';
+
+// Versuche Client vom Parent zu holen, sonst eigenen erstellen
+let supabase;
+if (window.parent && window.parent.supabaseClient) {
+    supabase = window.parent.supabaseClient;
+} else {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+}
 
 // ============================================
 // showToast und showConfirm kommen aus main.js
@@ -1474,10 +1483,15 @@ async function toggleAttendance(campaignId, kw, memberId, dayIndex) {
         // Prüfen ob Record existiert
         if (data.id) {
             // Update
-            await supabase
+            const { error: updateError } = await supabase
                 .from('campaign_attendance')
                 .update({ [dayColumn]: data.days[dayIndex] })
                 .eq('id', data.id);
+
+            if (updateError) {
+                console.error('Fehler beim Update der Anwesenheit:', updateError);
+                showToast('Fehler beim Speichern', 'error');
+            }
         } else {
             // Insert
             const insertData = {
@@ -1493,18 +1507,25 @@ async function toggleAttendance(campaignId, kw, memberId, dayIndex) {
                 day_6: data.days[6]
             };
 
+            console.log('Speichere Anwesenheit:', insertData);
+
             const { data: newRecord, error } = await supabase
                 .from('campaign_attendance')
                 .upsert(insertData, { onConflict: 'campaign_id,user_id,kw' })
                 .select()
                 .single();
 
-            if (!error && newRecord) {
+            if (error) {
+                console.error('Fehler beim Insert der Anwesenheit:', error);
+                showToast('Fehler beim Speichern: ' + error.message, 'error');
+            } else if (newRecord) {
+                console.log('Anwesenheit gespeichert:', newRecord);
                 data.id = newRecord.id;
             }
         }
     } catch (error) {
         console.error('Fehler beim Speichern der Anwesenheit:', error);
+        showToast('Fehler beim Speichern', 'error');
     }
 }
 

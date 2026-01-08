@@ -3990,7 +3990,7 @@ function renderKWDetails(campaign) {
 
                                                             return '<label class="kw-wg-ma-item ' + (isInThisWg ? 'checked' : '') + (isInOtherWg ? ' in-other-wg' : '') + '" data-ma-id="' + m.id + '">' +
                                                                 '<input type="checkbox" ' + (isInThisWg ? 'checked' : '') +
-                                                                    ' onchange="toggleWgMaZuordnungLive(' + kw + ', \'' + wg.id + '\', ' + m.id + ', this.checked)">' +
+                                                                    ' onchange="toggleWgMaZuordnungLive(' + kw + ', \'' + wg.id + '\', \'' + m.id + '\', this.checked)">' +
                                                                 '<div class="user-badge user-badge--werber user-badge--mini" style="flex: 1;">' +
                                                                     '<div class="user-badge__avatar">' + initials + getStufeBadge(mStufe) + '</div>' +
                                                                     '<div class="user-badge__info">' +

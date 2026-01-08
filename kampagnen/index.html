@@ -1324,10 +1324,22 @@ async function loadCampaignsFromSupabase() {
             const assignments = {};
             if (assignmentsData) {
                 assignmentsData.forEach(a => {
+                    // wgMaZuordnung aus campaign_area_id aufbauen
+                    const wgMaZuordnung = {};
+                    (a.campaign_assignment_werber || []).forEach(w => {
+                        if (w.campaign_area_id) {
+                            if (!wgMaZuordnung[w.campaign_area_id]) {
+                                wgMaZuordnung[w.campaign_area_id] = [];
+                            }
+                            wgMaZuordnung[w.campaign_area_id].push(w.werber_id);
+                        }
+                    });
+
                     assignments[a.kw] = {
                         teamchef: a.teamchef_id,
                         qualityManager: a.quality_manager_id,
                         werber: a.campaign_assignment_werber?.map(w => w.werber_id) || [],
+                        wgMaZuordnung: wgMaZuordnung,
                         challenges: []
                     };
                 });
@@ -4468,8 +4480,42 @@ function toggleKWWerbegebiet(kw, wgId) {
     rerenderKWDetails(campaign);
 }
 
+// Supabase Update für Werber-Einsatzgebiet-Zuordnung
+async function saveWerberAreaAssignment(campaignId, kw, werberId, campaignAreaId) {
+    try {
+        // Assignment ID für diese KW finden
+        const { data: assignment } = await supabase
+            .from('campaign_assignments')
+            .select('id')
+            .eq('campaign_id', campaignId)
+            .eq('kw', kw)
+            .single();
+
+        if (!assignment) {
+            console.error('Assignment nicht gefunden für KW', kw);
+            return false;
+        }
+
+        // campaign_area_id in campaign_assignment_werber updaten
+        const { error } = await supabase
+            .from('campaign_assignment_werber')
+            .update({ campaign_area_id: campaignAreaId })
+            .eq('assignment_id', assignment.id)
+            .eq('werber_id', werberId);
+
+        if (error) {
+            console.error('Fehler beim Speichern der WG-Zuordnung:', error);
+            return false;
+        }
+        return true;
+    } catch (error) {
+        console.error('Fehler beim Speichern der WG-Zuordnung:', error);
+        return false;
+    }
+}
+
 // MA-Zuordnung zu Werbegebiet togglen (nur 1 WG pro Werber!)
-function toggleWgMaZuordnung(kw, wgId, maId, isChecked) {
+async function toggleWgMaZuordnung(kw, wgId, maId, isChecked) {
     const campaign = campaigns.find(c => c.id === viewingCampaignId);
     if (!campaign) return;
 
@@ -4510,6 +4556,10 @@ function toggleWgMaZuordnung(kw, wgId, maId, isChecked) {
         }
     }
 
+    // In Supabase speichern (wgId wenn checked, null wenn unchecked)
+    const newAreaId = isChecked ? wgId : null;
+    await saveWerberAreaAssignment(campaign.id, kw, maId, newAreaId);
+
     // Nur die Checkboxen in dieser KW aktualisieren (ohne volles Re-render)
     const card = document.querySelector(`.unterabschnitt--card--expandable[data-kw="${kw}"]`);
     if (card) {
@@ -4529,7 +4579,7 @@ function toggleWgMaZuordnung(kw, wgId, maId, isChecked) {
 }
 
 // MA-Zuordnung zu Werbegebiet togglen - LIVE ohne Re-render
-function toggleWgMaZuordnungLive(kw, wgId, maId, isChecked) {
+async function toggleWgMaZuordnungLive(kw, wgId, maId, isChecked) {
     const campaign = campaigns.find(c => c.id === viewingCampaignId);
     if (!campaign) return;
 
@@ -4569,6 +4619,10 @@ function toggleWgMaZuordnungLive(kw, wgId, maId, isChecked) {
             }
         }
     }
+
+    // In Supabase speichern (wgId wenn checked, null wenn unchecked)
+    const newAreaId = isChecked ? wgId : null;
+    saveWerberAreaAssignment(campaign.id, kw, maId, newAreaId);
 
     // === LIVE DOM UPDATES (ohne Re-render) ===
     const card = document.querySelector(`.unterabschnitt--card--expandable[data-kw="${kw}"]`);

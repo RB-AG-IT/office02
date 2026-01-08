@@ -323,20 +323,88 @@
         let einsatztageByKampagne = {}; // campaign_id -> Anzahl Einsatztage (summiert über alle User)
 
         async function loadEinsatztage() {
+            // Erst Kampagnen laden um nach Zeitraum filtern zu können
+            let campaignsQuery = supabase
+                .from('campaigns')
+                .select('id, year, kw_from, kw_to');
+
+            const { data: campaigns, error: campaignsError } = await campaignsQuery;
+
+            if (campaignsError) {
+                console.error('Fehler beim Laden der Kampagnen:', campaignsError);
+                return;
+            }
+
+            // Kampagnen-IDs im Zeitraum ermitteln
+            let validCampaignIds = new Set();
+            if (periodStartDate || periodEndDate) {
+                const startYear = periodStartDate ? periodStartDate.getFullYear() : 0;
+                const endYear = periodEndDate ? periodEndDate.getFullYear() : 9999;
+                const startKw = periodStartDate ? getKwFromDate(periodStartDate) : 1;
+                const endKw = periodEndDate ? getKwFromDate(periodEndDate) : 53;
+
+                campaigns.forEach(c => {
+                    // Prüfen ob Kampagne im Zeitraum liegt
+                    const cYear = c.year || new Date().getFullYear();
+                    const cKwFrom = c.kw_from || 1;
+                    const cKwTo = c.kw_to || 53;
+
+                    // Kampagne liegt im Zeitraum wenn:
+                    // - Jahr passt UND KW-Bereiche überlappen
+                    if (cYear >= startYear && cYear <= endYear) {
+                        if (cYear === startYear && cYear === endYear) {
+                            // Gleiches Jahr: KW muss überlappen
+                            if (cKwTo >= startKw && cKwFrom <= endKw) {
+                                validCampaignIds.add(c.id);
+                            }
+                        } else if (cYear === startYear) {
+                            if (cKwTo >= startKw) validCampaignIds.add(c.id);
+                        } else if (cYear === endYear) {
+                            if (cKwFrom <= endKw) validCampaignIds.add(c.id);
+                        } else {
+                            validCampaignIds.add(c.id);
+                        }
+                    }
+                });
+            } else {
+                // Kein Filter: alle Kampagnen
+                campaigns.forEach(c => validCampaignIds.add(c.id));
+            }
+
+            // Attendance laden
             const { data: attendance, error } = await supabase
                 .from('campaign_attendance')
-                .select('user_id, campaign_id, day_0, day_1, day_2, day_3, day_4, day_5, day_6');
+                .select('user_id, campaign_id, kw, day_0, day_1, day_2, day_3, day_4, day_5, day_6');
 
             if (error) {
                 console.error('Fehler beim Laden der Einsatztage:', error);
                 return;
             }
 
-            // Zähle Tage pro User und pro Kampagne
+            // Zähle Tage pro User und pro Kampagne (nur für Kampagnen im Zeitraum)
             einsatztageMap = {};
             einsatztageByKampagne = {};
 
             attendance.forEach(row => {
+                // Nur Kampagnen im Zeitraum berücksichtigen
+                if (!validCampaignIds.has(row.campaign_id)) return;
+
+                // Zusätzlich KW-Filter innerhalb der Kampagne
+                if (periodStartDate || periodEndDate) {
+                    const campaign = campaigns.find(c => c.id === row.campaign_id);
+                    if (campaign) {
+                        const cYear = campaign.year || new Date().getFullYear();
+                        const startYear = periodStartDate ? periodStartDate.getFullYear() : 0;
+                        const endYear = periodEndDate ? periodEndDate.getFullYear() : 9999;
+                        const startKw = periodStartDate ? getKwFromDate(periodStartDate) : 1;
+                        const endKw = periodEndDate ? getKwFromDate(periodEndDate) : 53;
+
+                        // KW muss im Zeitraum liegen
+                        if (cYear === startYear && row.kw < startKw) return;
+                        if (cYear === endYear && row.kw > endKw) return;
+                    }
+                }
+
                 const days = [row.day_0, row.day_1, row.day_2, row.day_3, row.day_4, row.day_5, row.day_6];
                 const countDays = days.filter(d => d === true).length;
 
@@ -1002,10 +1070,9 @@
             const totalNettoJE = werberData.reduce((sum, w) => sum + w.nettoJE, 0);
             const totalEinsatztage = werberData.reduce((sum, w) => sum + (w.einsatztage || 0), 0);
             const avgStorno = werberData.length > 0 ? werberData.reduce((sum, w) => sum + w.storno, 0) / werberData.length : 0;
-            // Durchschnitt der individuellen Durchschnittswerte
-            const werberWithDays = werberData.filter(w => w.einsatztage > 0);
-            const avgMgTag = werberWithDays.length > 0 ? werberWithDays.reduce((sum, w) => sum + calcMgTag(w.records, w.einsatztage), 0) / werberWithDays.length : 0;
-            const avgUmsatzTag = werberWithDays.length > 0 ? werberWithDays.reduce((sum, w) => sum + calcUmsatzTag(w.nettoJE, w.einsatztage), 0) / werberWithDays.length : 0;
+            // Korrekter gewichteter Durchschnitt: Gesamt-MG / Gesamt-Einsatztage
+            const avgMgTag = totalEinsatztage > 0 ? totalRecords / totalEinsatztage : 0;
+            const avgUmsatzTag = totalEinsatztage > 0 ? totalNettoJE / totalEinsatztage : 0;
 
             tbody.innerHTML = werberData.map(werber => {
                 const einsatztage = werber.einsatztage || 0;
@@ -1070,10 +1137,11 @@
             const totalRecords = kundenData.reduce((sum, k) => sum + k.records, 0);
             const totalNettoJE = kundenData.reduce((sum, k) => sum + k.nettoJE, 0);
             const totalGebiete = gebieteData.length;
+            const totalEinsatztage = kundenData.reduce((sum, k) => sum + (k.einsatztage || 0), 0);
             const avgStorno = kundenData.length > 0 ? kundenData.reduce((sum, k) => sum + k.storno, 0) / kundenData.length : 0;
-            const kundenWithDays = kundenData.filter(k => k.einsatztage > 0);
-            const avgMgTag = kundenWithDays.length > 0 ? kundenWithDays.reduce((sum, k) => sum + calcMgTag(k.records, k.einsatztage), 0) / kundenWithDays.length : 0;
-            const avgUmsatzTag = kundenWithDays.length > 0 ? kundenWithDays.reduce((sum, k) => sum + calcUmsatzTag(k.nettoJE, k.einsatztage), 0) / kundenWithDays.length : 0;
+            // Korrekter gewichteter Durchschnitt: Gesamt-MG / Gesamt-Einsatztage
+            const avgMgTag = totalEinsatztage > 0 ? totalRecords / totalEinsatztage : 0;
+            const avgUmsatzTag = totalEinsatztage > 0 ? totalNettoJE / totalEinsatztage : 0;
 
             kundenData.forEach(kunde => {
                 const kundeGebiete = gebieteData.filter(g => g.kundeId === kunde.id);
@@ -1211,10 +1279,11 @@
             // Berechne Gesamt
             const totalRecords = kampagnenData.reduce((sum, k) => sum + k.records, 0);
             const totalNettoJE = kampagnenData.reduce((sum, k) => sum + k.nettoJE, 0);
+            const totalEinsatztage = kampagnenData.reduce((sum, k) => sum + (k.einsatztage || 0), 0);
             const avgStorno = kampagnenData.length > 0 ? kampagnenData.reduce((sum, k) => sum + k.storno, 0) / kampagnenData.length : 0;
-            const kampagnenWithDays = kampagnenData.filter(k => k.einsatztage > 0);
-            const avgMgTag = kampagnenWithDays.length > 0 ? kampagnenWithDays.reduce((sum, k) => sum + calcMgTag(k.records, k.einsatztage), 0) / kampagnenWithDays.length : 0;
-            const avgUmsatzTag = kampagnenWithDays.length > 0 ? kampagnenWithDays.reduce((sum, k) => sum + calcUmsatzTag(k.nettoJE, k.einsatztage), 0) / kampagnenWithDays.length : 0;
+            // Korrekter gewichteter Durchschnitt: Gesamt-MG / Gesamt-Einsatztage
+            const avgMgTag = totalEinsatztage > 0 ? totalRecords / totalEinsatztage : 0;
+            const avgUmsatzTag = totalEinsatztage > 0 ? totalNettoJE / totalEinsatztage : 0;
 
             let html = '';
 

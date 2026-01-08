@@ -437,20 +437,38 @@
                 return;
             }
 
-            // User Roles laden für Stufen
-            const { data: roles, error: rolesError } = await supabase
+            // Karrierestufen laden (role_type = 'career')
+            const today = new Date().toISOString().split('T')[0];
+            const { data: careerData, error: careerError } = await supabase
                 .from('user_roles')
                 .select('user_id, role_name')
-                .eq('role_type', 'main')
-                .eq('is_active', true);
+                .eq('role_type', 'career')
+                .lte('assigned_at', today)
+                .or(`valid_until.gte.${today},valid_until.is.null`);
 
-            if (rolesError) {
-                console.error('Fehler beim Laden der Rollen:', rolesError);
+            if (careerError) {
+                console.error('Fehler beim Laden der Karrierestufen:', careerError);
             }
 
-            const rolesMap = {};
-            (roles || []).forEach(r => {
-                rolesMap[r.user_id] = r.role_name;
+            // Rollen-Mapping (wie auf Benutzer-Seite)
+            const ROLE_TO_STUFE = {
+                'starting_marketing_advisor': 'SMA',
+                'executive_marketing_advisor': 'EMA',
+                'junior_marketing_manager': 'JMM',
+                'executive_marketing_manager': 'EMM',
+                'senior_marketing_manager': 'SMM',
+                'chief_executive_marketing_manager': 'CEMM',
+                'spitzen_botschafter': 'SPB',
+                'kadermanager': 'KAD',
+                'führungsebene': 'FUE',
+                'sma': 'SMA', 'ema': 'EMA', 'jmm': 'JMM', 'emm': 'EMM',
+                'smm': 'SMM', 'cemm': 'CEMM', 'spb': 'SPB', 'kad': 'KAD', 'fue': 'FUE'
+            };
+
+            const stufeMap = {};
+            (careerData || []).forEach(r => {
+                const careerName = r.role_name?.toLowerCase() || '';
+                stufeMap[r.user_id] = ROLE_TO_STUFE[careerName] || '';
             });
 
             // Records laden für Statistiken (mit Zeitraum-Filter)
@@ -503,7 +521,7 @@
                     records: stats.aktiv,
                     nettoJE: stats.nettoJE,
                     storno: stornoQuote,
-                    role: rolesMap[user.id] || 'Werber',
+                    stufe: stufeMap[user.id] || '',
                     einsatztage: einsatztageMap[user.id] || 0
                 };
             });
@@ -1118,7 +1136,7 @@
                     <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" onclick="event.stopPropagation();"></td>
                     <td class="col-name">
                         <div class="name-cell">
-                            ${createBadge({ type: 'werber', name: werber.name, stufe: werber.role })}
+                            ${createBadge({ type: 'werber', name: werber.name, stufe: werber.stufe })}
                         </div>
                     </td>
                     <td class="col-count">${werber.records}</td>

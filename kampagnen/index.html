@@ -1474,10 +1474,15 @@ async function toggleAttendance(campaignId, kw, memberId, dayIndex) {
         // Prüfen ob Record existiert
         if (data.id) {
             // Update
-            await supabase
+            const { error: updateError } = await supabase
                 .from('campaign_attendance')
                 .update({ [dayColumn]: data.days[dayIndex] })
                 .eq('id', data.id);
+
+            if (updateError) {
+                console.error('Fehler beim Update der Anwesenheit:', updateError);
+                showToast('Fehler beim Speichern', 'error');
+            }
         } else {
             // Insert
             const insertData = {
@@ -1493,18 +1498,25 @@ async function toggleAttendance(campaignId, kw, memberId, dayIndex) {
                 day_6: data.days[6]
             };
 
+            console.log('Speichere Anwesenheit:', insertData);
+
             const { data: newRecord, error } = await supabase
                 .from('campaign_attendance')
                 .upsert(insertData, { onConflict: 'campaign_id,user_id,kw' })
                 .select()
                 .single();
 
-            if (!error && newRecord) {
+            if (error) {
+                console.error('Fehler beim Insert der Anwesenheit:', error);
+                showToast('Fehler beim Speichern: ' + error.message, 'error');
+            } else if (newRecord) {
+                console.log('Anwesenheit gespeichert:', newRecord);
                 data.id = newRecord.id;
             }
         }
     } catch (error) {
         console.error('Fehler beim Speichern der Anwesenheit:', error);
+        showToast('Fehler beim Speichern', 'error');
     }
 }
 

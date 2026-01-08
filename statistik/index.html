@@ -437,6 +437,21 @@
                 return;
             }
 
+            // User Profiles laden für Profilbilder
+            const { data: profilesData, error: profilesError } = await supabase
+                .from('user_profiles')
+                .select('user_id, photo_intern_url');
+
+            if (profilesError) {
+                console.error('Fehler beim Laden der Profile:', profilesError);
+            }
+
+            // Profil-Map erstellen
+            const profilesMap = {};
+            (profilesData || []).forEach(p => {
+                profilesMap[p.user_id] = p.photo_intern_url || '';
+            });
+
             // Karrierestufen laden (role_type = 'career')
             const today = new Date().toISOString().split('T')[0];
             const { data: careerData, error: careerError } = await supabase
@@ -522,6 +537,7 @@
                     nettoJE: stats.nettoJE,
                     storno: stornoQuote,
                     stufe: stufeMap[user.id] || '',
+                    image: profilesMap[user.id] || '',
                     einsatztage: einsatztageMap[user.id] || 0
                 };
             });
@@ -1149,7 +1165,7 @@
                     <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" onclick="event.stopPropagation();"></td>
                     <td class="col-name">
                         <div class="name-cell">
-                            ${createBadge({ type: 'werber', name: werber.name, stufe: werber.stufe })}
+                            ${createBadge({ type: 'werber', name: werber.name, stufe: werber.stufe, image: werber.image })}
                         </div>
                     </td>
                     <td class="col-count">${werber.records}</td>

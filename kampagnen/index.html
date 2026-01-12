@@ -2397,8 +2397,9 @@ function renderAvailableWerbegebiete() {
     const werbegebiete = kundenWerbegebiete[selectedWgKunde] || [];
 
     // Filtern: WGs die noch nicht hinzugefügt wurden
-    const addedIds = campaignWerbegebiete.map(w => w.id);
-    const available = werbegebiete.filter(wg => !addedIds.includes(wg.id));
+    // Vergleiche customer_area_id (nicht campaign_areas.id) mit customer_areas.id
+    const addedCustomerAreaIds = campaignWerbegebiete.map(w => w.customer_area_id);
+    const available = werbegebiete.filter(wg => !addedCustomerAreaIds.includes(wg.id));
 
     if (available.length === 0) {
         container.innerHTML = '<div class="anzeigenfeld anzeigenfeld--hinweis">Alle Werbegebiete hinzugefügt</div>';

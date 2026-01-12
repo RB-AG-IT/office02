@@ -4108,6 +4108,9 @@ async function setKWQualityManager(kw, qmId) {
     const campaign = campaigns.find(c => c.id === viewingCampaignId);
     if (!campaign) return;
 
+    // Alten QM ermitteln (aus lokalem State)
+    const oldQmId = campaign.assignments[kw]?.qualityManager || null;
+
     if (!campaign.assignments[kw]) {
         campaign.assignments[kw] = {};
     }
@@ -4127,6 +4130,10 @@ async function setKWQualityManager(kw, qmId) {
             showToast('Fehler beim Speichern', 'error');
             return;
         }
+
+        // User-Rollen automatisch aktualisieren
+        await updateQualityManagerRoles(oldQmId, qmId);
+
     } catch (error) {
         console.error('Fehler beim Speichern des Quality Managers:', error);
         showToast('Fehler beim Speichern', 'error');
@@ -4138,6 +4145,38 @@ async function setKWQualityManager(kw, qmId) {
     showToast(`Quality Manager für KW ${kw} ${qmId ? 'gesetzt' : 'entfernt'}`, 'success');
     // View aktualisieren (expanded-Zustand erhalten)
     rerenderKWDetails(campaign);
+}
+
+// Helper: User-Rollen bei QM-Änderung aktualisieren
+async function updateQualityManagerRoles(oldQmId, newQmId) {
+    try {
+        // Neuen QM auf Rolle 'quality' setzen
+        if (newQmId) {
+            await supabase
+                .from('users')
+                .update({ role: 'quality' })
+                .eq('id', newQmId);
+        }
+
+        // Alten QM prüfen: Hat er noch andere QM-Zuweisungen?
+        if (oldQmId && oldQmId !== newQmId) {
+            const { data: otherAssignments } = await supabase
+                .from('campaign_assignments')
+                .select('id')
+                .eq('quality_manager_id', oldQmId)
+                .limit(1);
+
+            // Keine anderen QM-Zuweisungen -> Rolle auf 'werber' zurücksetzen
+            if (!otherAssignments || otherAssignments.length === 0) {
+                await supabase
+                    .from('users')
+                    .update({ role: 'werber' })
+                    .eq('id', oldQmId);
+            }
+        }
+    } catch (error) {
+        console.error('Fehler beim Aktualisieren der User-Rollen:', error);
+    }
 }
 
 // Challenge hinzufügen (nur QM kann Challenges erstellen)

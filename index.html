@@ -219,6 +219,17 @@
                     </div>
                     <div class="zeile">
                         <div class="eingabefeld-gruppe">
+                            <label class="eingabefeld-beschriftung-oben" for="createUserType">Benutzertyp</label>
+                            <select class="eingabefeld" id="createUserType" required>
+                                <option value="">Bitte wählen...</option>
+                                <option value="werber">Botschafter</option>
+                                <option value="kunde">Kunde</option>
+                            </select>
+                            <span class="eingabefeld-beschriftung-unten"></span>
+                        </div>
+                    </div>
+                    <div class="zeile">
+                        <div class="eingabefeld-gruppe">
                             <label class="eingabefeld-beschriftung-oben" for="createUserEmail">E-Mail</label>
                             <input type="email" class="eingabefeld" id="createUserEmail" placeholder="benutzer@example.com">
                             <span class="eingabefeld-beschriftung-unten"></span>
@@ -373,11 +384,12 @@
 
         function openCreateUserModal() {
             document.getElementById('createUserModal').classList.add('active');
-            document.getElementById('createUserEmail').focus();
+            document.getElementById('createUserType').focus();
         }
 
         function closeCreateUserModal() {
             document.getElementById('createUserModal').classList.remove('active');
+            document.getElementById('createUserType').value = '';
             document.getElementById('createUserEmail').value = '';
             document.getElementById('createUserError').style.display = 'none';
             document.getElementById('createUserSuccess').style.display = 'none';
@@ -389,10 +401,19 @@
         });
 
         async function handleCreateUser() {
+            const userType = document.getElementById('createUserType').value;
             const email = document.getElementById('createUserEmail').value.trim();
             const createBtn = document.getElementById('createUserBtn');
             const errorEl = document.getElementById('createUserError');
             const successEl = document.getElementById('createUserSuccess');
+
+            // Validation
+            if (!userType) {
+                errorEl.textContent = 'Bitte Benutzertyp wählen';
+                errorEl.style.display = 'block';
+                successEl.style.display = 'none';
+                return;
+            }
 
             // Show loading state
             createBtn.disabled = true;
@@ -401,37 +422,51 @@
             successEl.style.display = 'none';
 
             try {
-                // Neue UUID generieren
-                const newUserId = crypto.randomUUID();
+                const newId = crypto.randomUUID();
 
-                // User in users-Tabelle erstellen
-                const { error: userError } = await window.supabaseClient
-                    .from('users')
-                    .insert({
-                        id: newUserId,
-                        email: email || null,
-                        role: 'werber',
-                        name: ''
-                    });
+                if (userType === 'kunde') {
+                    // Kunde in customers-Tabelle erstellen (kein Login)
+                    const { error: customerError } = await window.supabaseClient
+                        .from('customers')
+                        .insert({
+                            id: newId,
+                            name: '',
+                            email: email || null
+                        });
 
-                if (userError) throw userError;
+                    if (customerError) throw customerError;
 
-                // User-Profil erstellen
-                const { error: profileError } = await window.supabaseClient
-                    .from('user_profiles')
-                    .insert({ user_id: newUserId });
+                    closeCreateUserModal();
+                    loadPage(`benutzer/BENUTZER-KUNDEN-PROFIL.html?id=${newId}&new=true`);
+                } else {
+                    // Botschafter in users-Tabelle erstellen
+                    const { error: userError } = await window.supabaseClient
+                        .from('users')
+                        .insert({
+                            id: newId,
+                            email: email || null,
+                            role: 'werber',
+                            name: ''
+                        });
 
-                if (profileError) {
-                    console.error('Profile creation error:', profileError);
+                    if (userError) throw userError;
+
+                    // User-Profil erstellen
+                    const { error: profileError } = await window.supabaseClient
+                        .from('user_profiles')
+                        .insert({ user_id: newId });
+
+                    if (profileError) {
+                        console.error('Profile creation error:', profileError);
+                    }
+
+                    closeCreateUserModal();
+                    loadPage(`benutzer/BENUTZER-BOTSCHAFTER-PROFIL.html?id=${newId}&new=true`);
                 }
-
-                // Success - redirect to profile page
-                closeCreateUserModal();
-                loadPage(`benutzer/BENUTZER-BOTSCHAFTER-PROFIL.html?id=${newUserId}&new=true`);
 
             } catch (error) {
                 console.error('Create user error:', error);
-                errorEl.textContent = error.message || 'Fehler beim Erstellen des Benutzers';
+                errorEl.textContent = error.message || 'Fehler beim Erstellen';
                 errorEl.style.display = 'block';
             } finally {
                 createBtn.disabled = false;

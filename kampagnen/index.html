@@ -4074,11 +4074,11 @@ async function setKWTeamchef(kw, tcId) {
 // Helper: User-Rollen bei TC-Änderung aktualisieren
 async function updateTeamchefRoles(oldTcId, newTcId) {
     try {
-        // Neuen TC auf Rolle 'teamchef' setzen
+        // Neuen TC auf Rolle 'teamleiter' setzen
         if (newTcId) {
             await supabase
                 .from('users')
-                .update({ role: 'teamchef' })
+                .update({ role: 'teamleiter' })
                 .eq('id', newTcId);
         }
 

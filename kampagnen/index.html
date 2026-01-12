@@ -4033,6 +4033,9 @@ async function setKWTeamchef(kw, tcId) {
     const campaign = campaigns.find(c => c.id === viewingCampaignId);
     if (!campaign) return;
 
+    // Alten TC ermitteln (aus lokalem State oder DB)
+    const oldTcId = campaign.assignments[kw]?.teamchef || null;
+
     if (!campaign.assignments[kw]) {
         campaign.assignments[kw] = {};
     }
@@ -4053,6 +4056,10 @@ async function setKWTeamchef(kw, tcId) {
             showToast('Fehler beim Speichern', 'error');
             return;
         }
+
+        // User-Rollen automatisch aktualisieren
+        await updateTeamchefRoles(oldTcId, tcId);
+
     } catch (error) {
         console.error('Fehler beim Speichern des Teamchefs:', error);
         showToast('Fehler beim Speichern', 'error');
@@ -4062,6 +4069,38 @@ async function setKWTeamchef(kw, tcId) {
     showToast(`Teamchef für KW ${kw} ${tcId ? 'gesetzt' : 'entfernt'}`, 'success');
     // View aktualisieren (expanded-Zustand erhalten)
     rerenderKWDetails(campaign);
+}
+
+// Helper: User-Rollen bei TC-Änderung aktualisieren
+async function updateTeamchefRoles(oldTcId, newTcId) {
+    try {
+        // Neuen TC auf Rolle 'teamchef' setzen
+        if (newTcId) {
+            await supabase
+                .from('users')
+                .update({ role: 'teamchef' })
+                .eq('id', newTcId);
+        }
+
+        // Alten TC prüfen: Hat er noch andere TC-Zuweisungen?
+        if (oldTcId && oldTcId !== newTcId) {
+            const { data: otherAssignments } = await supabase
+                .from('campaign_assignments')
+                .select('id')
+                .eq('teamchef_id', oldTcId)
+                .limit(1);
+
+            // Keine anderen TC-Zuweisungen -> Rolle auf 'werber' zurücksetzen
+            if (!otherAssignments || otherAssignments.length === 0) {
+                await supabase
+                    .from('users')
+                    .update({ role: 'werber' })
+                    .eq('id', oldTcId);
+            }
+        }
+    } catch (error) {
+        console.error('Fehler beim Aktualisieren der User-Rollen:', error);
+    }
 }
 
 // Quality Manager für KW setzen

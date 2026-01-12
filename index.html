@@ -219,19 +219,8 @@
                     </div>
                     <div class="zeile">
                         <div class="eingabefeld-gruppe">
-                            <label class="eingabefeld-beschriftung-oben" for="createUserType">Benutzertyp</label>
-                            <select class="eingabefeld" id="createUserType" required>
-                                <option value="">Bitte wählen...</option>
-                                <option value="werber">Botschafter</option>
-                                <option value="kunde">Kunde</option>
-                            </select>
-                            <span class="eingabefeld-beschriftung-unten"></span>
-                        </div>
-                    </div>
-                    <div class="zeile">
-                        <div class="eingabefeld-gruppe">
                             <label class="eingabefeld-beschriftung-oben" for="createUserEmail">E-Mail</label>
-                            <input type="email" class="eingabefeld" id="createUserEmail" placeholder="benutzer@example.com" required>
+                            <input type="email" class="eingabefeld" id="createUserEmail" placeholder="benutzer@example.com">
                             <span class="eingabefeld-beschriftung-unten"></span>
                         </div>
                     </div>
@@ -384,12 +373,11 @@
 
         function openCreateUserModal() {
             document.getElementById('createUserModal').classList.add('active');
-            document.getElementById('createUserType').focus();
+            document.getElementById('createUserEmail').focus();
         }
 
         function closeCreateUserModal() {
             document.getElementById('createUserModal').classList.remove('active');
-            document.getElementById('createUserType').value = '';
             document.getElementById('createUserEmail').value = '';
             document.getElementById('createUserError').style.display = 'none';
             document.getElementById('createUserSuccess').style.display = 'none';
@@ -401,19 +389,10 @@
         });
 
         async function handleCreateUser() {
-            const userType = document.getElementById('createUserType').value;
             const email = document.getElementById('createUserEmail').value.trim();
             const createBtn = document.getElementById('createUserBtn');
             const errorEl = document.getElementById('createUserError');
             const successEl = document.getElementById('createUserSuccess');
-
-            // Validation
-            if (!userType) {
-                errorEl.textContent = 'Bitte Benutzertyp wählen';
-                errorEl.style.display = 'block';
-                successEl.style.display = 'none';
-                return;
-            }
 
             // Show loading state
             createBtn.disabled = true;
@@ -431,7 +410,7 @@
                     .insert({
                         id: newUserId,
                         email: email || null,
-                        role: userType === 'kunde' ? 'kunde' : 'werber',
+                        role: 'werber',
                         name: ''
                     });
 
@@ -448,10 +427,7 @@
 
                 // Success - redirect to profile page
                 closeCreateUserModal();
-                const profilePage = userType === 'kunde'
-                    ? `benutzer/BENUTZER-KUNDEN-PROFIL.html?id=${newUserId}&new=true`
-                    : `benutzer/BENUTZER-BOTSCHAFTER-PROFIL.html?id=${newUserId}&new=true`;
-                loadPage(profilePage);
+                loadPage(`benutzer/BENUTZER-BOTSCHAFTER-PROFIL.html?id=${newUserId}&new=true`);
 
             } catch (error) {
                 console.error('Create user error:', error);

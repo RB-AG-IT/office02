@@ -84,7 +84,14 @@
                         <span class="eingabefeld-beschriftung-unten"></span>
                     </div>
                     <div class="eingabefeld-gruppe">
-                        <label class="eingabefeld-beschriftung-oben">Telefon *</label>
+                        <label class="eingabefeld-beschriftung-oben">Passwort</label>
+                        <input type="password" class="eingabefeld" id="password" placeholder="Neues Passwort setzen">
+                        <span class="eingabefeld-beschriftung-unten">Nur ausfüllen um Passwort zu setzen/ändern</span>
+                    </div>
+                </div>
+                <div class="zeile">
+                    <div class="eingabefeld-gruppe">
+                        <label class="eingabefeld-beschriftung-oben">Telefon</label>
                         <input type="tel" class="eingabefeld" id="phone" placeholder="+49 123 456789">
                         <span class="eingabefeld-beschriftung-unten"></span>
                     </div>
@@ -1339,13 +1346,61 @@
             }
 
             try {
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value;
+
+                // Passwort-Handling: Auth-User erstellen oder aktualisieren
+                if (password) {
+                    if (password.length < 6) {
+                        showToast('Passwort muss mindestens 6 Zeichen haben', 'error');
+                        return;
+                    }
+                    if (!email) {
+                        showToast('E-Mail wird für Passwort benötigt', 'error');
+                        return;
+                    }
+
+                    // Prüfen ob Auth-User existiert
+                    const { data: authUser } = await supabase.auth.admin.getUserById(currentUserId);
+
+                    if (authUser?.user) {
+                        // Auth-User existiert - Passwort aktualisieren
+                        const { error: updateError } = await supabase.auth.admin.updateUserById(
+                            currentUserId,
+                            { password: password, email: email }
+                        );
+                        if (updateError) throw updateError;
+                    } else {
+                        // Neuen Auth-User erstellen mit der gleichen ID
+                        const { error: createError } = await supabase.auth.admin.createUser({
+                            id: currentUserId,
+                            email: email,
+                            password: password,
+                            email_confirm: true
+                        });
+                        if (createError) throw createError;
+                    }
+
+                    // Passwort-Feld leeren
+                    document.getElementById('password').value = '';
+                }
+
+                // E-Mail in users Tabelle aktualisieren
+                if (email && email !== userData.email) {
+                    await supabase
+                        .from('users')
+                        .update({ email: email })
+                        .eq('id', currentUserId);
+                    userData.email = email;
+                }
+
                 // Profil-Daten sammeln
                 const clothingSize = document.getElementById('clothingSize').value;
                 const profileData = {
                     first_name: document.getElementById('firstName').value,
                     last_name: document.getElementById('lastName').value,
                     phone: document.getElementById('phone').value,
-                    clothing_size: clothingSize || null, // NULL statt leerer String
+                    clothing_size: clothingSize || null,
                     street: document.getElementById('street').value,
                     house_number: document.getElementById('houseNumber').value,
                     postal_code: document.getElementById('zip').value,

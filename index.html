@@ -215,7 +215,7 @@
                 <!-- Modal Body -->
                 <div class="page-content">
                     <div class="zeile" style="justify-content: center;">
-                        <span class="text-klein">Neuen Benutzer einladen</span>
+                        <span class="text-klein">Neuen Benutzer anlegen</span>
                     </div>
                     <div class="zeile">
                         <div class="eingabefeld-gruppe">
@@ -243,7 +243,7 @@
                 <!-- Modal Footer -->
                 <div class="page-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeCreateUserModal()">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary" id="createUserBtn">Einladen & Weiter</button>
+                    <button type="submit" class="btn btn-primary" id="createUserBtn">Weiter</button>
                 </div>
             </form>
         </div>
@@ -415,14 +415,6 @@
                 return;
             }
 
-            // Werber braucht E-Mail (für Auth), Kunden nicht
-            if (userType === 'werber' && !email) {
-                errorEl.textContent = 'Bitte E-Mail für Werber angeben';
-                errorEl.style.display = 'block';
-                successEl.style.display = 'none';
-                return;
-            }
-
             // Show loading state
             createBtn.disabled = true;
             createBtn.textContent = 'Wird erstellt...';
@@ -430,44 +422,36 @@
             successEl.style.display = 'none';
 
             try {
-                // Kunden brauchen keinen Auth-User - direkt zur Profil-Seite
-                if (userType === 'kunde') {
-                    closeCreateUserModal();
-                    // Navigiere zu users, dann setze iframe auf Kunden-Profil
-                    loadPage('users');
-                    setTimeout(() => {
-                        const iframe = document.querySelector('#content-container iframe');
-                        if (iframe) {
-                            iframe.src = 'benutzer/BENUTZER-KUNDEN-PROFIL.html';
-                        }
-                    }, 100);
-                    return;
-                }
+                // Neue UUID generieren
+                const newUserId = crypto.randomUUID();
 
-                // Werber: Edge Function für Auth-User
-                const { data: { session } } = await window.supabaseClient.auth.getSession();
-                if (!session) {
-                    throw new Error('Bitte zuerst einloggen');
-                }
+                // User in users-Tabelle erstellen
+                const { error: userError } = await window.supabaseClient
+                    .from('users')
+                    .insert({
+                        id: newUserId,
+                        email: email || null,
+                        role: userType === 'kunde' ? 'kunde' : 'werber',
+                        name: ''
+                    });
 
-                const response = await fetch(`${SUPABASE_URL}/functions/v1/dynamic-processor`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${session.access_token}`
-                    },
-                    body: JSON.stringify({ email, userType })
-                });
+                if (userError) throw userError;
 
-                const result = await response.json();
+                // User-Profil erstellen
+                const { error: profileError } = await window.supabaseClient
+                    .from('user_profiles')
+                    .insert({ user_id: newUserId });
 
-                if (!response.ok) {
-                    throw new Error(result.error || 'Fehler beim Erstellen');
+                if (profileError) {
+                    console.error('Profile creation error:', profileError);
                 }
 
                 // Success - redirect to profile page
                 closeCreateUserModal();
-                loadPage(`benutzer/BENUTZER-BOTSCHAFTER-PROFIL.html?id=${result.userId}&new=true`);
+                const profilePage = userType === 'kunde'
+                    ? `benutzer/BENUTZER-KUNDEN-PROFIL.html?id=${newUserId}&new=true`
+                    : `benutzer/BENUTZER-BOTSCHAFTER-PROFIL.html?id=${newUserId}&new=true`;
+                loadPage(profilePage);
 
             } catch (error) {
                 console.error('Create user error:', error);
@@ -475,7 +459,7 @@
                 errorEl.style.display = 'block';
             } finally {
                 createBtn.disabled = false;
-                createBtn.textContent = 'Einladen & Weiter';
+                createBtn.textContent = 'Weiter';
             }
         }
 
